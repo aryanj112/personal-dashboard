@@ -81,6 +81,32 @@ npm run dev
 
 Then open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
+## Desktop App
+
+There is now a Tauri desktop wrapper for the frontend in `frontend/src-tauri`.
+
+Run the desktop app in development:
+
+```bash
+cd frontend
+npm run tauri dev
+```
+
+Build a local macOS app bundle:
+
+```bash
+cd frontend
+npm run tauri build -- --bundles app --no-sign
+```
+
+The built app is placed at:
+
+```text
+frontend/src-tauri/target/release/bundle/macos/Personal.app
+```
+
+For now, the desktop app still talks to the same local backend at `http://127.0.0.1:8000`, so the backend needs to be running unless and until we wire backend auto-start into the desktop shell.
+
 ## Important Runtime Notes
 
 - The backend initializes and migrates the SQLite schema on startup via `create_schema()` in `backend/personal_api/core/db.py`.

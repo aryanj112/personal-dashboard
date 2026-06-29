@@ -116,20 +116,22 @@ export function ModulePage({
               />
             </label>
 
-            <label>
-              <span>Notes</span>
-              <textarea
-                rows={4}
-                value={form.notes}
-                onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-                placeholder={notePlaceholder}
-              />
-            </label>
+            {kind !== "guitar" && (
+              <label>
+                <span>Notes</span>
+                <textarea
+                  rows={4}
+                  value={form.notes}
+                  onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                  placeholder={notePlaceholder}
+                />
+              </label>
+            )}
 
             <div className="field-group">
-              <span className="field-caption">
-                {kind === "guitar" ? "Parts worked on" : "Workout types"}
-              </span>
+              {kind !== "guitar" && (
+                <span className="field-caption">Workout types</span>
+              )}
               {!form.is_rest ? (
                 <div className="chip-grid">
                   {data.sections.map((section) => {
@@ -383,7 +385,7 @@ function getTodayString() {
 }
 
 function formatSessionDate(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString();
+  return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { weekday: "long" });
 }
 
 function getLastRunDuration(sessions: ModuleResponse["sessions"]) {

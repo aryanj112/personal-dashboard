@@ -14,50 +14,103 @@ type CagedPosition = { shape: CagedShape; startFret: number; chord: ChordValue[]
 const KEY_LABELS = ["C","C#/D♭","D","D#/E♭","E","F","F#/G♭","G","G#/A♭","A","A#/B♭","B"];
 
 // Root fret per string for each key (index = semitone from C)
-const ROOT_ON_E = [8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7]; // low E string
-const ROOT_ON_A = [3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2]; // A string
-const ROOT_ON_D = [10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; // D string
+const ROOT_ON_E = [8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7];
+const ROOT_ON_A = [3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2];
+const ROOT_ON_D = [10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-// Open chord templates (used for natural positions)
-const OPEN_C: ChordValue[] = ["x", 3, 2, "o", 1, "o"];
-const OPEN_A: ChordValue[] = ["x", "o", 2, 2, 2, "o"];
-const OPEN_G: ChordValue[] = [3, 2, "o", "o", "o", 3];
-const OPEN_E: ChordValue[] = ["o", 2, 2, 1, "o", "o"];
-const OPEN_D: ChordValue[] = ["x", "x", "o", 2, 3, 2];
+// ── Data-driven chord type registry ─────────────────────────
+// open*: natural open-position voicing (used when root lands there naturally)
+// tmpl*: barre template (relative frets, 1 = startFret)
+// To add a new chord type, push a new entry to CHORD_TYPES below.
+type ChordTypeConfig = {
+  id: string;
+  label: string;
+  nameFn: (key: string) => string;
+  openE?: ChordValue[]; openA?: ChordValue[]; openG?: ChordValue[];
+  openC?: ChordValue[]; openD?: ChordValue[];
+  tmplE: ChordValue[]; tmplA: ChordValue[]; tmplG: ChordValue[];
+  tmplC: ChordValue[]; tmplD: ChordValue[];
+};
 
-// Barre shape templates (relative frets from startFret)
-const TMPL_E: ChordValue[] = [1, 3, 3, 2, 1, 1];
-const TMPL_A: ChordValue[] = ["x", 1, 3, 3, 3, 1];
-const TMPL_G: ChordValue[] = [4, 3, 1, 1, 1, 4];
-const TMPL_C: ChordValue[] = ["x", 4, 3, 1, 2, 1];
-const TMPL_D: ChordValue[] = ["x", "x", 1, 3, 4, 3];
+const CHORD_TYPES: ChordTypeConfig[] = [
+  {
+    id: "major", label: "Major", nameFn: (k) => `${k} Major`,
+    openE: ["o", 2, 2, 1, "o", "o"],
+    openA: ["x", "o", 2, 2, 2, "o"],
+    openG: [3, 2, "o", "o", "o", 3],
+    openC: ["x", 3, 2, "o", 1, "o"],
+    openD: ["x", "x", "o", 2, 3, 2],
+    tmplE: [1, 3, 3, 2, 1, 1],
+    tmplA: ["x", 1, 3, 3, 3, 1],
+    tmplG: [4, 3, 1, 1, 1, 4],
+    tmplC: ["x", 4, 3, 1, 2, 1],
+    tmplD: ["x", "x", 1, 3, 4, 3],
+  },
+  {
+    id: "m7", label: "m7", nameFn: (k) => `${k}m7`,
+    openE: ["o", 2, 2, "o", "o", "o"],
+    openA: ["x", "o", 2, "o", 1, "o"],
+    openD: ["x", "x", "o", 2, 1, 1],
+    tmplE: [1, 3, 3, 1, 1, 1],
+    tmplA: ["x", 1, 3, 1, 2, 1],
+    tmplG: [3, 1, 1, 1, 1, 3],
+    tmplC: ["x", 3, 1, 1, 1, 1],
+    tmplD: ["x", "x", 1, 3, 2, 2],
+  },
+  {
+    id: "dom7", label: "7", nameFn: (k) => `${k}7`,
+    openE: ["o", 2, "o", 1, "o", "o"],
+    openA: ["x", "o", 2, "o", 2, "o"],
+    openG: [3, 2, "o", "o", "o", 1],
+    openC: ["x", 3, 2, 3, 1, "o"],
+    openD: ["x", "x", "o", 2, 1, 2],
+    tmplE: [1, 3, 1, 2, 1, 1],
+    tmplA: ["x", 1, 3, 1, 3, 1],
+    tmplG: [4, 3, 1, 2, 1, 2],
+    tmplC: ["x", 3, 2, 3, 1, 1],
+    tmplD: ["x", "x", 1, 3, 2, 3],
+  },
+  {
+    id: "maj7", label: "maj7", nameFn: (k) => `${k}maj7`,
+    openE: ["o", 2, 1, 1, "o", "o"],
+    openA: ["x", "o", 2, 1, 2, "o"],
+    openG: [3, 2, "o", "o", "o", 2],
+    openC: ["x", 3, 2, "o", "o", "o"],
+    openD: ["x", "x", "o", 2, 2, 2],
+    tmplE: [1, 3, 2, 2, 1, 1],
+    tmplA: ["x", 1, 3, 2, 3, 1],
+    tmplG: [4, 3, 1, 1, 1, 3],
+    tmplC: ["x", 4, 3, 1, 1, 1],
+    tmplD: ["x", "x", 1, 3, 3, 3],
+  },
+];
 
-function getCAGEDPositions(keyIdx: number): CagedPosition[] {
+function getPositions(keyIdx: number, cfg: ChordTypeConfig): CagedPosition[] {
   const rE = ROOT_ON_E[keyIdx];
   const rA = ROOT_ON_A[keyIdx];
   const rD = ROOT_ON_D[keyIdx];
 
-  const ePos: CagedPosition = rE === 0
-    ? { shape: "E", startFret: 1, chord: OPEN_E }
-    : { shape: "E", startFret: rE, chord: TMPL_E };
+  const ePos: CagedPosition = rE === 0 && cfg.openE
+    ? { shape: "E", startFret: 1, chord: cfg.openE }
+    : { shape: "E", startFret: rE === 0 ? 12 : rE, chord: cfg.tmplE };
 
-  const aPos: CagedPosition = rA === 0
-    ? { shape: "A", startFret: 1, chord: OPEN_A }
-    : { shape: "A", startFret: rA, chord: TMPL_A };
+  const aPos: CagedPosition = rA === 0 && cfg.openA
+    ? { shape: "A", startFret: 1, chord: cfg.openA }
+    : { shape: "A", startFret: rA === 0 ? 12 : rA, chord: cfg.tmplA };
 
-  const dPos: CagedPosition = rD === 0
-    ? { shape: "D", startFret: 1, chord: OPEN_D }
-    : { shape: "D", startFret: rD, chord: TMPL_D };
+  const dPos: CagedPosition = rD === 0 && cfg.openD
+    ? { shape: "D", startFret: 1, chord: cfg.openD }
+    : { shape: "D", startFret: rD === 0 ? 12 : rD, chord: cfg.tmplD };
 
   const gSF = (rE - 3 + 12) % 12;
-  const gPos: CagedPosition = rE === 3
-    ? { shape: "G", startFret: 1, chord: OPEN_G }
-    : { shape: "G", startFret: gSF === 0 ? 12 : gSF, chord: TMPL_G };
+  const gPos: CagedPosition = rE === 3 && cfg.openG
+    ? { shape: "G", startFret: 1, chord: cfg.openG }
+    : { shape: "G", startFret: gSF === 0 ? 12 : gSF, chord: cfg.tmplG };
 
   const cSF = (rA - 3 + 12) % 12;
-  const cPos: CagedPosition = rA === 3
-    ? { shape: "C", startFret: 1, chord: OPEN_C }
-    : { shape: "C", startFret: cSF === 0 ? 12 : cSF, chord: TMPL_C };
+  const cPos: CagedPosition = rA === 3 && cfg.openC
+    ? { shape: "C", startFret: 1, chord: cfg.openC }
+    : { shape: "C", startFret: cSF === 0 ? 12 : cSF, chord: cfg.tmplC };
 
   return [ePos, aPos, dPos, gPos, cPos].sort((a, b) => a.startFret - b.startFret);
 }
@@ -93,11 +146,9 @@ export function GuitarPage({
   const todayString = getTodayString();
   const [form, setForm] = useState({
     date: todayString,
-    notes: "",
     section_ids: [] as number[],
   });
   const [showWeekSessions, setShowWeekSessions] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [openMaterials, setOpenMaterials] = useState<Record<number, boolean>>({});
   const deltaBluesGroup =
     data.song_groups.find((group) => group.name.trim().toLowerCase() === "delta blues") ?? null;
@@ -113,12 +164,11 @@ export function GuitarPage({
     await api.createSession("guitar", {
       date: form.date,
       duration_minutes: 0,
-      notes: form.notes,
+      notes: "",
       section_ids: form.section_ids,
     });
     setForm({
       date: todayString,
-      notes: "",
       section_ids: [],
     });
     await onRefresh();
@@ -150,18 +200,7 @@ export function GuitarPage({
               />
             </label>
 
-            <label>
-              <span>Notes</span>
-              <textarea
-                rows={4}
-                value={form.notes}
-                onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-                placeholder="What part did you work on?"
-              />
-            </label>
-
             <div className="field-group">
-              <span className="field-caption">Parts worked on</span>
               <div className="chip-grid">
                 {data.sections.map((section) => {
                   const active = form.section_ids.includes(section.id);
@@ -211,42 +250,6 @@ export function GuitarPage({
       </div>
 
       <motion.section className="surface-card" {...panelReveal}>
-        <button
-          type="button"
-          className="surface-toggle"
-          onClick={() => setShowWeekSessions((current) => !current)}
-        >
-          <div>
-            <p className="eyebrow">{weekRangeLabel}</p>
-            <h3>This week</h3>
-          </div>
-          <div className="module-toggle-meta">
-            <span>{data.analytics.days_this_week} / 7</span>
-            <ChevronDown className={showWeekSessions ? "open" : ""} size={18} />
-          </div>
-        </button>
-
-        {showWeekSessions ? (
-          <div className="toggle-panel session-list">
-            {thisWeekSessions.map((session) => (
-              <div key={session.id} className="session-card">
-                <div>
-                  <strong>{formatSessionDate(session.session_date)}</strong>
-                  <p>{session.sections.map((section) => section.name).join(", ") || "No type"}</p>
-                  {session.notes ? <small>{session.notes}</small> : null}
-                </div>
-              </div>
-            ))}
-            {thisWeekSessions.length === 0 ? (
-              <div className="empty-state">
-                <h4>No sessions for {weekRangeLabel}.</h4>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </motion.section>
-
-      <motion.section className="surface-card" {...panelReveal}>
         <div className="surface-header">
           <div>
             <h3>Current material</h3>
@@ -277,37 +280,31 @@ export function GuitarPage({
         <button
           type="button"
           className="surface-toggle"
-          onClick={() => setShowHistory((current) => !current)}
+          onClick={() => setShowWeekSessions((current) => !current)}
         >
           <div>
-            <h3>History</h3>
+            <p className="eyebrow">{weekRangeLabel}</p>
+            <h3>This week</h3>
           </div>
-          <ChevronDown className={showHistory ? "open" : ""} size={18} />
+          <div className="module-toggle-meta">
+            <span>{data.analytics.days_this_week} / 7</span>
+            <ChevronDown className={showWeekSessions ? "open" : ""} size={18} />
+          </div>
         </button>
 
-        {showHistory ? (
+        {showWeekSessions ? (
           <div className="toggle-panel session-list">
-            {data.sessions.map((session) => (
+            {thisWeekSessions.map((session) => (
               <div key={session.id} className="session-card">
                 <div>
                   <strong>{formatSessionDate(session.session_date)}</strong>
                   <p>{session.sections.map((section) => section.name).join(", ") || "No type"}</p>
-                  {session.notes ? <small>{session.notes}</small> : null}
                 </div>
-                <button
-                  className="icon-button danger"
-                  onClick={async () => {
-                    await api.deleteSession("guitar", session.id);
-                    await onRefresh();
-                  }}
-                >
-                  <Trash2 size={16} />
-                </button>
               </div>
             ))}
-            {data.sessions.length === 0 ? (
+            {thisWeekSessions.length === 0 ? (
               <div className="empty-state">
-                <h4>No sessions yet.</h4>
+                <h4>No sessions for {weekRangeLabel}.</h4>
               </div>
             ) : null}
           </div>
@@ -399,54 +396,10 @@ function MaterialRow({
             </div>
           ) : isCagedMaterial ? (
             <div className="guitar-caged-grid">
-              <CagedChordBrowser />
-              <label>
-                <span className="metric-label">Regulars</span>
-                <textarea
-                  rows={4}
-                  value={cagedFields.regulars}
-                  onChange={(event) =>
-                    setCagedFields((current) => ({
-                      ...current,
-                      regulars: event.target.value,
-                    }))
-                  }
-                  onBlur={() => void saveMaterial()}
-                  placeholder="Regular shapes, notes, or reminders..."
-                />
-              </label>
-
-              <label>
-                <span className="metric-label">7ths</span>
-                <textarea
-                  rows={4}
-                  value={cagedFields.sevenths}
-                  onChange={(event) =>
-                    setCagedFields((current) => ({
-                      ...current,
-                      sevenths: event.target.value,
-                    }))
-                  }
-                  onBlur={() => void saveMaterial()}
-                  placeholder="7th shapes or voicing notes..."
-                />
-              </label>
-
-              <label>
-                <span className="metric-label">9ths</span>
-                <textarea
-                  rows={4}
-                  value={cagedFields.ninths}
-                  onChange={(event) =>
-                    setCagedFields((current) => ({
-                      ...current,
-                      ninths: event.target.value,
-                    }))
-                  }
-                  onBlur={() => void saveMaterial()}
-                  placeholder="9th shapes or voicing notes..."
-                />
-              </label>
+              <h4 className="caged-section-header">Regular</h4>
+              <MajorBrowser />
+              <h4 className="caged-section-header">7ths</h4>
+              <SeventhsBrowser />
             </div>
           ) : isDeltaBluesMaterial ? (
             <DeltaBluesMaterial
@@ -468,7 +421,7 @@ function MaterialRow({
             </label>
           )}
 
-          {isDeltaBluesMaterial || isSongsMaterial || isClassicalMaterial ? null : (
+          {isDeltaBluesMaterial || isSongsMaterial || isClassicalMaterial || isCagedMaterial ? null : (
             <div className="editor-actions">
               <button className="secondary-button" type="button" onClick={() => void saveMaterial()}>
                 Save notes
@@ -715,14 +668,11 @@ function DeltaBluesSongCard({
   );
 }
 
-function CagedChordBrowser() {
+function MajorBrowser() {
   const [keyIdx, setKeyIdx] = useState(0);
   const total = KEY_LABELS.length;
-
-  const positions = getCAGEDPositions(keyIdx);
-
-  function prevKey() { setKeyIdx((i) => (i - 1 + total) % total); }
-  function nextKey() { setKeyIdx((i) => (i + 1) % total); }
+  const cfg = CHORD_TYPES[0]; // major
+  const positions = getPositions(keyIdx, cfg);
 
   function posLabel(p: CagedPosition) {
     return p.chord.includes("o") ? `${p.shape} · open` : `${p.shape} · fr.${p.startFret}`;
@@ -731,33 +681,64 @@ function CagedChordBrowser() {
   return (
     <div className="chord-browser">
       <div className="chord-browser-nav">
-        <button className="icon-button chord-nav-btn" onClick={prevKey} aria-label="Previous chord">
+        <button className="icon-button chord-nav-btn" onClick={() => setKeyIdx((i) => (i - 1 + total) % total)} aria-label="Previous key">
           <ChevronLeft size={18} />
         </button>
-        <span className="chord-browser-label">{KEY_LABELS[keyIdx]} Major</span>
-        <button className="icon-button chord-nav-btn" onClick={nextKey} aria-label="Next chord">
+        <span className="chord-browser-label">{cfg.nameFn(KEY_LABELS[keyIdx])}</span>
+        <button className="icon-button chord-nav-btn" onClick={() => setKeyIdx((i) => (i + 1) % total)} aria-label="Next key">
           <ChevronRight size={18} />
         </button>
       </div>
       <div className="chord-browser-dots">
         {KEY_LABELS.map((_, i) => (
-          <button
-            key={i}
-            className={`chord-dot-btn${i === keyIdx ? " active" : ""}`}
-            onClick={() => setKeyIdx(i)}
-          />
+          <button key={i} className={`chord-dot-btn${i === keyIdx ? " active" : ""}`} onClick={() => setKeyIdx(i)} />
         ))}
       </div>
       <div className="chord-pos-row">
         {positions.map((p) => (
-          <ChordDiagram
-            key={`${keyIdx}-${p.shape}`}
-            label={posLabel(p)}
-            defaultChord={p.chord}
-            startFret={p.startFret}
-          />
+          <ChordDiagram key={`major-${keyIdx}-${p.shape}`} label={posLabel(p)} defaultChord={p.chord} startFret={p.startFret} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function SeventhsBrowser() {
+  const [keyIdx, setKeyIdx] = useState(0);
+  const total = KEY_LABELS.length;
+  // CHORD_TYPES[1]=m7, [2]=dom7, [3]=maj7
+  const seventhTypes = CHORD_TYPES.slice(1);
+
+  function posLabel(p: CagedPosition) {
+    return p.chord.includes("o") ? `${p.shape} · open` : `${p.shape} · fr.${p.startFret}`;
+  }
+
+  return (
+    <div className="chord-browser chord-browser-sevenths">
+      <div className="chord-browser-nav">
+        <button className="icon-button chord-nav-btn" onClick={() => setKeyIdx((i) => (i - 1 + total) % total)} aria-label="Previous key">
+          <ChevronLeft size={18} />
+        </button>
+        <span className="chord-browser-label">{KEY_LABELS[keyIdx]}</span>
+        <button className="icon-button chord-nav-btn" onClick={() => setKeyIdx((i) => (i + 1) % total)} aria-label="Next key">
+          <ChevronRight size={18} />
+        </button>
+      </div>
+      <div className="chord-browser-dots">
+        {KEY_LABELS.map((_, i) => (
+          <button key={i} className={`chord-dot-btn${i === keyIdx ? " active" : ""}`} onClick={() => setKeyIdx(i)} />
+        ))}
+      </div>
+      {seventhTypes.map((cfg) => (
+        <div key={cfg.id} className="chord-sevenths-row">
+          <span className="chord-row-type-label">{cfg.nameFn(KEY_LABELS[keyIdx])}</span>
+          <div className="chord-pos-row">
+            {getPositions(keyIdx, cfg).map((p) => (
+              <ChordDiagram key={`${cfg.id}-${keyIdx}-${p.shape}`} label={posLabel(p)} defaultChord={p.chord} startFret={p.startFret} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -973,7 +954,7 @@ function getTodayString() {
 }
 
 function formatSessionDate(value: string) {
-  return new Date(`${value}T12:00:00`).toLocaleDateString();
+  return new Date(`${value}T12:00:00`).toLocaleDateString("en-US", { weekday: "long" });
 }
 
 function autoResizeTextarea(textarea: HTMLTextAreaElement) {

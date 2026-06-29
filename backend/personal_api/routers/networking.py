@@ -61,3 +61,12 @@ def api_update_potential_connect(connect_id: int, payload: PotentialConnectUpdat
         if not connect:
             raise HTTPException(status_code=404, detail="Potential connect not found.")
         return connect
+
+
+@router.delete("/potential-connects/{connect_id}")
+def api_delete_potential_connect(connect_id: int) -> dict[str, bool]:
+    with get_db() as conn:
+        deleted = conn.execute("DELETE FROM potential_connects WHERE id = ?", (connect_id,))
+        if deleted.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Potential connect not found.")
+        return {"ok": True}

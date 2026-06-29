@@ -5,11 +5,13 @@ from typing import Any
 
 
 def serialize_task(row: sqlite3.Row) -> dict[str, Any]:
+    d = dict(row)
     return {
-        **dict(row),
+        **d,
         "completed": bool(row["completed"]),
         "is_misc": bool(row["is_misc"]),
         "priority": row["priority"] or "medium",
+        "url": d.get("url") or "",
     }
 
 
@@ -18,7 +20,7 @@ def list_tasks_for_date(
 ) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc
+        SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url
         FROM tasks
         WHERE task_date = ? AND is_misc = 0
         ORDER BY sort_order, id
@@ -33,7 +35,7 @@ def list_tasks_for_week(
 ) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc
+        SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url
         FROM tasks
         WHERE task_date >= ? AND task_date <= ? AND is_misc = 0
         ORDER BY task_date, sort_order, id
@@ -48,7 +50,7 @@ def list_overdue_tasks(
 ) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc
+        SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url
         FROM tasks
         WHERE task_date < ? AND completed = 0 AND is_misc = 0
         ORDER BY task_date ASC, sort_order ASC, id ASC
@@ -61,7 +63,7 @@ def list_overdue_tasks(
 def list_misc_tasks(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc
+        SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url
         FROM tasks
         WHERE is_misc = 1
         ORDER BY completed ASC, sort_order ASC, id ASC

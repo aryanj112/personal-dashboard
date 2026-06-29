@@ -102,6 +102,9 @@ export function DistributionPieChart({
   const activeItems = items.filter((item) => item.minutes > 0);
   const total = activeItems.reduce((sum, item) => sum + item.minutes, 0);
   const centerTotal = totalValue ?? total;
+  const radius = 41;
+  const strokeWidth = 16;
+  const circumference = 2 * Math.PI * radius;
 
   if (total === 0) {
     return <div className="chart-empty">{emptyLabel}</div>;
@@ -121,13 +124,27 @@ export function DistributionPieChart({
     };
   });
 
-  const gradient = slices
-    .map((slice) => `${slice.color} ${slice.start}% ${slice.end}%`)
-    .join(", ");
-
   return (
     <div className="pie-layout">
-      <div className="pie-ring" style={{ backgroundImage: `conic-gradient(${gradient})` }}>
+      <div className="pie-ring">
+        <svg viewBox="0 0 100 100" className="pie-svg" aria-hidden="true">
+          <circle className="pie-track" cx="50" cy="50" r={radius} />
+          {slices.map((slice) => (
+            <circle
+              key={slice.id}
+              cx="50"
+              cy="50"
+              r={radius}
+              fill="none"
+              stroke={slice.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${(slice.percent / 100) * circumference} ${circumference}`}
+              strokeDashoffset={`${-(slice.start / 100) * circumference}`}
+              strokeLinecap="butt"
+              className="pie-slice"
+            />
+          ))}
+        </svg>
         <div className="pie-hole">
           <strong>
             {totalFormatter ? totalFormatter(centerTotal) : Math.round(centerTotal * 100) / 100}

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import {
+  BriefcaseBusiness,
   Building2,
   Check,
   ChevronDown,
@@ -7,13 +8,13 @@ import {
   Dumbbell,
   GripVertical,
   Guitar,
-  Landmark,
   LayoutGrid,
   Moon,
   Plus,
   StickyNote,
   Sun,
   Trash2,
+  X,
 } from "lucide-react";
 import { DragEvent, FormEvent, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -21,7 +22,7 @@ import { WorkoutHistoryCard } from "../components/WorkoutHistoryCard";
 import { api } from "../lib/api";
 import { formatDurationMinutes } from "../lib/duration";
 import type { NetworkingOptionConfig } from "../lib/networking";
-import type { Company, FinanceCategory, ModuleResponse } from "../lib/types";
+import type { Company, ModuleResponse } from "../lib/types";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const reveal = {
@@ -47,7 +48,6 @@ export function SettingsPage({
   timeZone,
   guitar,
   workouts,
-  financeCategories,
   dashboardPreferences,
   networkingOptions,
   onThemeChange,
@@ -55,7 +55,6 @@ export function SettingsPage({
   onTimeZoneChange,
   onDashboardPreferencesChange,
   onNetworkingOptionsChange,
-  onFinanceCategoriesChange,
   onRefresh,
 }: {
   theme: "light" | "dark";
@@ -63,19 +62,13 @@ export function SettingsPage({
   timeZone: string;
   guitar: ModuleResponse | null;
   workouts: ModuleResponse | null;
-  financeCategories: FinanceCategory[];
   dashboardPreferences: {
     show_dashboard_refresh: boolean;
     show_open_today: boolean;
     show_export_today: boolean;
-    show_today_complete: boolean;
-    show_guitar_cadence: boolean;
-    show_training_rhythm: boolean;
-    show_guitar_trend: boolean;
-    show_training_trend: boolean;
-    show_finance_page: boolean;
-    show_reflection_page: boolean;
     show_notes: boolean;
+    show_og_internships: boolean;
+    show_internships: boolean;
   };
   networkingOptions: NetworkingOptionConfig;
   onThemeChange: (theme: "light" | "dark") => void;
@@ -85,23 +78,16 @@ export function SettingsPage({
     show_dashboard_refresh: boolean;
     show_open_today: boolean;
     show_export_today: boolean;
-    show_today_complete: boolean;
-    show_guitar_cadence: boolean;
-    show_training_rhythm: boolean;
-    show_guitar_trend: boolean;
-    show_training_trend: boolean;
-    show_finance_page: boolean;
-    show_reflection_page: boolean;
     show_notes: boolean;
+    show_og_internships: boolean;
+    show_internships: boolean;
   }) => void;
   onNetworkingOptionsChange: (options: NetworkingOptionConfig) => void;
-  onFinanceCategoriesChange: (categories: FinanceCategory[]) => void;
   onRefresh: () => Promise<void>;
 }) {
   const [showGuitarSection, setShowGuitarSection] = useState(false);
   const [showWorkoutSection, setShowWorkoutSection] = useState(false);
   const [showNetworkingEnums, setShowNetworkingEnums] = useState(false);
-  const [showFinanceSection, setShowFinanceSection] = useState(false);
   const [showOptionals, setShowOptionals] = useState(false);
   const [showGuitarManager, setShowGuitarManager] = useState(false);
   const [showGuitarHistory, setShowGuitarHistory] = useState(false);
@@ -221,11 +207,6 @@ export function SettingsPage({
           <div className="toggle-panel">
             <div className="settings-enum-grid">
               <EnumManager
-                title="Companies"
-                values={networkingOptions.companyOptions}
-                onChange={(nextValues) => updateNetworkingOptions("companyOptions", nextValues)}
-              />
-              <EnumManager
                 title="Roles"
                 values={networkingOptions.roleOptions}
                 onChange={(nextValues) => updateNetworkingOptions("roleOptions", nextValues)}
@@ -255,23 +236,6 @@ export function SettingsPage({
                 }
               />
             </div>
-          </div>
-        ) : null}
-      </motion.section>
-
-      <motion.section className="surface-card" {...reveal}>
-        <button className="surface-toggle" onClick={() => setShowFinanceSection((current) => !current)}>
-          <div>
-            <h3>Finance</h3>
-          </div>
-          <ChevronDown className={showFinanceSection ? "open" : ""} size={18} />
-        </button>
-        {showFinanceSection ? (
-          <div className="toggle-panel">
-            <FinanceCategoryManager
-              categories={financeCategories}
-              onChange={onFinanceCategoriesChange}
-            />
           </div>
         ) : null}
       </motion.section>
@@ -334,40 +298,6 @@ export function SettingsPage({
               <label className="settings-toggle-row">
                 <span className="settings-toggle-copy">
                   <span className="settings-tile-icon">
-                    <Landmark size={18} />
-                  </span>
-                  <span>
-                    <strong>Show finance page</strong>
-                    <small>Displays Finance in the navigation.</small>
-                  </span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={dashboardPreferences.show_finance_page}
-                  onChange={(event) => updatePreference("show_finance_page", event.target.checked)}
-                />
-              </label>
-
-              <label className="settings-toggle-row">
-                <span className="settings-toggle-copy">
-                  <span className="settings-tile-icon">
-                    <LayoutGrid size={18} />
-                  </span>
-                  <span>
-                    <strong>Show reflection page</strong>
-                    <small>Displays Reflection in the navigation.</small>
-                  </span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={dashboardPreferences.show_reflection_page}
-                  onChange={(event) => updatePreference("show_reflection_page", event.target.checked)}
-                />
-              </label>
-
-              <label className="settings-toggle-row">
-                <span className="settings-toggle-copy">
-                  <span className="settings-tile-icon">
                     <LayoutGrid size={18} />
                   </span>
                   <span>
@@ -398,6 +328,22 @@ export function SettingsPage({
                   onChange={(event) => updatePreference("show_notes", event.target.checked)}
                 />
               </label>
+
+              <label className="settings-toggle-row">
+                <span className="settings-toggle-label">
+                  <span className="settings-tile-icon"><BriefcaseBusiness size={16} /></span>
+                  <span>
+                    <strong>Show internships</strong>
+                    <small>Adds the Internships page to the navigation bar.</small>
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={dashboardPreferences.show_internships}
+                  onChange={(event) => updatePreference("show_internships", event.target.checked)}
+                />
+              </label>
+
             </div>
           </div>
         ) : null}
@@ -428,103 +374,6 @@ function formatTimeZoneLabel(value: string) {
   return value;
 }
 
-function FinanceCategoryManager({
-  categories,
-  onChange,
-}: {
-  categories: FinanceCategory[];
-  onChange: (categories: FinanceCategory[]) => void;
-}) {
-  const [newCategory, setNewCategory] = useState("");
-  const [draggingId, setDraggingId] = useState<number | null>(null);
-
-  async function addCategory(event: FormEvent) {
-    event.preventDefault();
-    const trimmed = newCategory.trim();
-    if (!trimmed) {
-      return;
-    }
-    try {
-      const created = await api.createFinanceCategory(trimmed);
-      onChange([...categories, created]);
-      setNewCategory("");
-    } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : "Unable to add category.");
-    }
-  }
-
-  async function renameCategory(categoryId: number, nextName: string) {
-    const trimmed = nextName.trim();
-    if (!trimmed) {
-      return;
-    }
-    try {
-      const updated = await api.updateFinanceCategory(categoryId, trimmed);
-      onChange(categories.map((category) => (category.id === categoryId ? updated : category)));
-    } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : "Unable to rename category.");
-    }
-  }
-
-  async function removeCategory(categoryId: number) {
-    try {
-      await api.deleteFinanceCategory(categoryId);
-      onChange(categories.filter((category) => category.id !== categoryId));
-    } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : "Unable to delete category.");
-    }
-  }
-
-  async function moveCategory(targetId: number) {
-    if (draggingId == null || draggingId === targetId) {
-      return;
-    }
-
-    const nextCategories = reorderCategories(categories, draggingId, targetId);
-    onChange(nextCategories);
-    setDraggingId(null);
-
-    try {
-      const response = await api.reorderFinanceCategories(nextCategories.map((category) => category.id));
-      onChange(response.categories);
-    } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : "Unable to reorder categories.");
-    }
-  }
-
-  return (
-    <div className="settings-enum-panel finance-settings-panel">
-      <div className="settings-enum-header">
-        <h3>Expense categories</h3>
-      </div>
-
-      <form className="task-entry" onSubmit={addCategory}>
-        <input
-          value={newCategory}
-          onChange={(event) => setNewCategory(event.target.value)}
-          placeholder="Add expense category..."
-        />
-        <button type="submit">
-          <Plus size={16} />
-          Add
-        </button>
-      </form>
-
-      <div className="finance-category-stack">
-        {categories.map((category) => (
-          <EditableFinanceCategory
-            key={category.id}
-            category={category}
-            onSave={renameCategory}
-            onRemove={removeCategory}
-            onDragStart={() => setDraggingId(category.id)}
-            onDrop={() => void moveCategory(category.id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function LocationOptionsManager({
   locationOptions,
@@ -780,89 +629,6 @@ function EditableOption({
   );
 }
 
-function EditableFinanceCategory({
-  category,
-  onSave,
-  onRemove,
-  onDragStart,
-  onDrop,
-}: {
-  category: FinanceCategory;
-  onSave: (categoryId: number, nextValue: string) => Promise<void>;
-  onRemove: (categoryId: number) => Promise<void>;
-  onDragStart: () => void;
-  onDrop: () => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(category.name);
-
-  async function save() {
-    await onSave(category.id, draft);
-    setEditing(false);
-  }
-
-  if (editing) {
-    return (
-      <input
-        className="chip-edit"
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => void save()}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            void save();
-          }
-        }}
-        autoFocus
-      />
-    );
-  }
-
-  return (
-    <div
-      className="chip-chip-row finance-category-row"
-      draggable
-      onDragStart={onDragStart}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={onDrop}
-    >
-      <span className="finance-category-grip" aria-hidden="true">
-        <GripVertical size={14} />
-      </span>
-      <button type="button" className="chip" onClick={() => setEditing(true)}>
-        {category.name}
-      </button>
-      <button
-        className="icon-button danger section-delete"
-        type="button"
-        onClick={() => void onRemove(category.id)}
-        aria-label={`Delete ${category.name}`}
-      >
-        <Trash2 size={14} />
-      </button>
-    </div>
-  );
-}
-
-function reorderCategories(
-  categories: FinanceCategory[],
-  draggingId: number,
-  targetId: number,
-) {
-  const nextCategories = [...categories];
-  const fromIndex = nextCategories.findIndex((category) => category.id === draggingId);
-  const targetIndex = nextCategories.findIndex((category) => category.id === targetId);
-  if (fromIndex === -1 || targetIndex === -1) {
-    return categories;
-  }
-
-  const [dragged] = nextCategories.splice(fromIndex, 1);
-  nextCategories.splice(targetIndex, 0, dragged);
-  return nextCategories.map((category, index) => ({
-    ...category,
-    sort_order: index + 1,
-  }));
-}
 
 function SettingsModulePanel({
   title,
@@ -1020,6 +786,7 @@ function EditableSection({
   onRefresh: () => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [value, setValue] = useState(name);
 
   async function save() {
@@ -1034,17 +801,8 @@ function EditableSection({
   }
 
   async function remove() {
-    const confirmed = window.confirm(`Delete "${name}"?`);
-    if (!confirmed) {
-      return;
-    }
-    try {
-      await api.deleteSection(kind, sectionId);
-      await onRefresh();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Could not delete this item.";
-      window.alert(message);
-    }
+    await api.deleteSection(kind, sectionId);
+    await onRefresh();
   }
 
   if (editing) {
@@ -1064,6 +822,20 @@ function EditableSection({
     );
   }
 
+  if (confirming) {
+    return (
+      <div className="chip-chip-row chip-confirm-row">
+        <span className="chip-confirm-label">Delete "{name}"?</span>
+        <button className="icon-button danger" type="button" onClick={() => void remove()}>
+          <Trash2 size={14} />
+        </button>
+        <button className="icon-button" type="button" onClick={() => setConfirming(false)}>
+          <X size={14} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="chip-chip-row">
       <button className="chip" onClick={() => setEditing(true)}>
@@ -1072,7 +844,7 @@ function EditableSection({
       <button
         className="icon-button danger section-delete"
         type="button"
-        onClick={() => void remove()}
+        onClick={() => setConfirming(true)}
         aria-label={`Delete ${name}`}
       >
         <Trash2 size={14} />
@@ -1088,6 +860,7 @@ function HabitsManager() {
   const [loading, setLoading] = useState(true);
   const [newHabitName, setNewHabitName] = useState("");
   const [adding, setAdding] = useState(false);
+  const [confirmingHabitId, setConfirmingHabitId] = useState<number | null>(null);
   const dragIndexRef = useRef<number | null>(null);
   const dragOverIndexRef = useRef<number | null>(null);
 
@@ -1106,21 +879,17 @@ function HabitsManager() {
       await api.createHabit(trimmed);
       setNewHabitName("");
       loadHabits();
-    } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : "Unable to add habit.");
+    } catch {
+      // silently fail — habit list will not refresh
     } finally {
       setAdding(false);
     }
   }
 
-  async function handleDelete(id: number, name: string) {
-    if (!window.confirm(`Remove "${name}"?`)) return;
-    try {
-      await api.deleteHabit(id);
-      loadHabits();
-    } catch (caught) {
-      window.alert(caught instanceof Error ? caught.message : "Unable to delete habit.");
-    }
+  async function handleDelete(id: number) {
+    await api.deleteHabit(id);
+    setConfirmingHabitId(null);
+    loadHabits();
   }
 
   function onDragStart(_e: DragEvent, index: number) {
@@ -1167,14 +936,26 @@ function HabitsManager() {
           >
             <GripVertical size={14} className="habit-grip" />
             <span className="habit-manager-name">{habit.name}</span>
-            <button
-              className="icon-button danger"
-              type="button"
-              onClick={() => void handleDelete(habit.id, habit.name)}
-              aria-label={`Delete ${habit.name}`}
-            >
-              <Trash2 size={14} />
-            </button>
+            {confirmingHabitId === habit.id ? (
+              <>
+                <span className="chip-confirm-label">Delete?</span>
+                <button className="icon-button danger" type="button" onClick={() => void handleDelete(habit.id)}>
+                  <Trash2 size={14} />
+                </button>
+                <button className="icon-button" type="button" onClick={() => setConfirmingHabitId(null)}>
+                  <X size={14} />
+                </button>
+              </>
+            ) : (
+              <button
+                className="icon-button danger"
+                type="button"
+                onClick={() => setConfirmingHabitId(habit.id)}
+                aria-label={`Delete ${habit.name}`}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         ))}
         {habits.length === 0 && <p className="metric-label">No habits yet.</p>}
@@ -1241,9 +1022,11 @@ function CompanyListManager() {
     }
   }
 
-  async function handleDelete(id: number, name: string) {
-    if (!window.confirm(`Remove "${name}" from the company list?`)) return;
+  const [confirmingCompanyId, setConfirmingCompanyId] = useState<number | null>(null);
+
+  async function handleDelete(id: number) {
     await api.deleteCompany(id);
+    setConfirmingCompanyId(null);
     loadCompanies();
   }
 
@@ -1296,14 +1079,26 @@ function CompanyListManager() {
                   ) : (
                     <span className="chip company-chip">{company.name}</span>
                   )}
-                  <button
-                    className="icon-button danger section-delete"
-                    type="button"
-                    onClick={() => void handleDelete(company.id, company.name)}
-                    aria-label={`Remove ${company.name}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {confirmingCompanyId === company.id ? (
+                    <>
+                      <span className="chip-confirm-label">Remove?</span>
+                      <button className="icon-button danger" type="button" onClick={() => void handleDelete(company.id)}>
+                        <Trash2 size={14} />
+                      </button>
+                      <button className="icon-button" type="button" onClick={() => setConfirmingCompanyId(null)}>
+                        <X size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="icon-button danger section-delete"
+                      type="button"
+                      onClick={() => setConfirmingCompanyId(company.id)}
+                      aria-label={`Remove ${company.name}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
           </div>

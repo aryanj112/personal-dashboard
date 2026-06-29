@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Inbox,
   MoreHorizontal,
   Plus,
@@ -31,7 +32,6 @@ import {
 import { api } from "../lib/api";
 import type {
   ModuleResponse,
-  RecurringTask,
   Task,
   TaskPriority,
   TodayResponse,
@@ -145,10 +145,11 @@ function AddTaskModal({
   defaultMisc?: boolean;
   defaultRecurring?: boolean;
   onClose: () => void;
-  onSubmit: (text: string, priority: TaskPriority, date: string | null, is_misc: boolean) => Promise<void>;
+  onSubmit: (text: string, priority: TaskPriority, date: string | null, is_misc: boolean, url: string) => Promise<void>;
   onSubmitRecurring?: (text: string, priority: TaskPriority, days_of_week: number[], end_date: string | null) => Promise<void>;
 }) {
   const [text, setText] = useState("");
+  const [url, setUrl] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dateMode, setDateMode] = useState<DateMode>(() => {
     if (defaultRecurring) return "recurring";
@@ -187,7 +188,7 @@ function AddTaskModal({
       } else {
         const isMisc = dateMode === "misc";
         const date = isMisc ? null : dateMode === "today" ? getTodayString() : pickedDate;
-        await onSubmit(text.trim(), priority, date, isMisc);
+        await onSubmit(text.trim(), priority, date, isMisc, url.trim());
       }
       onClose();
     } finally {
@@ -323,6 +324,14 @@ function AddTaskModal({
             </>
           )}
 
+          <input
+            className="modal-url-input"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="Link (optional)"
+            type="url"
+          />
+
           <div className="modal-actions">
             <button type="button" className="secondary-button" onClick={onClose}>
               Cancel
@@ -362,6 +371,17 @@ function TaskPill({
         aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
       />
       <span className="pill-text">{task.text}</span>
+      {task.url && (
+        <a
+          href={task.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="task-link-badge"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink size={10} />
+        </a>
+      )}
       {!compact && (
         <button
           className="pill-delete"
@@ -405,6 +425,7 @@ function DayModal({
   const [editPriority, setEditPriority] = useState<TaskPriority>("medium");
   const [editDate, setEditDate] = useState(date);
   const [editIsMisc, setEditIsMisc] = useState(false);
+  const [editUrl, setEditUrl] = useState("");
   const parsed = new Date(`${date}T12:00:00`);
   const dayName = parsed.toLocaleDateString(undefined, { weekday: "long" });
   const dateLabel = parsed.toLocaleDateString(undefined, { month: "long", day: "numeric" });
@@ -447,6 +468,7 @@ function DayModal({
     setEditPriority(task.priority);
     setEditDate(task.task_date ?? date);
     setEditIsMisc(task.is_misc);
+    setEditUrl(task.url ?? "");
   }
 
   function cancelEdit() {
@@ -455,6 +477,7 @@ function DayModal({
     setEditPriority("medium");
     setEditDate(date);
     setEditIsMisc(false);
+    setEditUrl("");
   }
 
   async function saveEdit(task: Task) {
@@ -466,6 +489,7 @@ function DayModal({
       priority: editPriority,
       date: editIsMisc ? null : editDate,
       is_misc: editIsMisc,
+      url: editUrl.trim(),
     });
     cancelEdit();
     await onRefresh();
@@ -567,6 +591,13 @@ function DayModal({
                         {editIsMisc ? "Keep dated" : "Move to misc"}
                       </button>
                     </div>
+                    <input
+                      className="task-url-edit-input"
+                      value={editUrl}
+                      onChange={(event) => setEditUrl(event.target.value)}
+                      placeholder="Link (optional)"
+                      type="url"
+                    />
                   </div>
                   {task._overdue && <span className="day-modal-overdue-tag">overdue</span>}
                   <div className="day-modal-actions">
@@ -598,6 +629,11 @@ function DayModal({
                 <>
                   <div className="day-modal-main">
                     <span className="day-modal-row-text">{task.text}</span>
+                    {task.url && (
+                      <a href={task.url} target="_blank" rel="noopener noreferrer" className="task-link-badge" onClick={(e) => e.stopPropagation()}>
+                        <ExternalLink size={10} />
+                      </a>
+                    )}
                   </div>
                   <div className="day-modal-actions">
                     <span className={`priority-badge priority-${task.priority}`}>
@@ -685,6 +721,13 @@ function DayModal({
                           {editIsMisc ? "Keep dated" : "Move to misc"}
                         </button>
                       </div>
+                      <input
+                        className="task-url-edit-input"
+                        value={editUrl}
+                        onChange={(event) => setEditUrl(event.target.value)}
+                        placeholder="Link (optional)"
+                        type="url"
+                      />
                     </div>
                     <div className="day-modal-actions">
                       <button
@@ -715,6 +758,11 @@ function DayModal({
                   <>
                     <div className="day-modal-main">
                       <span className="day-modal-row-text">{task.text}</span>
+                      {task.url && (
+                        <a href={task.url} target="_blank" rel="noopener noreferrer" className="task-link-badge" onClick={(e) => e.stopPropagation()}>
+                          <ExternalLink size={10} />
+                        </a>
+                      )}
                     </div>
                     <div className="day-modal-actions">
                       <span className={`priority-badge priority-${task.priority}`}>
@@ -1006,6 +1054,7 @@ function MiscPanel({
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   const [editPriority, setEditPriority] = useState<TaskPriority>("medium");
+  const [editUrl, setEditUrl] = useState("");
   const dateInputsRef = useRef<Map<number, HTMLInputElement>>(new Map());
 
   async function toggle(task: Task) {
@@ -1025,12 +1074,14 @@ function MiscPanel({
     setEditingTaskId(task.id);
     setEditText(task.text);
     setEditPriority(task.priority);
+    setEditUrl(task.url ?? "");
   }
 
   function cancelEdit() {
     setEditingTaskId(null);
     setEditText("");
     setEditPriority("medium");
+    setEditUrl("");
   }
 
   async function saveEdit(task: Task) {
@@ -1040,6 +1091,7 @@ function MiscPanel({
     await api.updateTask(task.id, {
       text: editText.trim(),
       priority: editPriority,
+      url: editUrl.trim(),
     });
     cancelEdit();
     await onRefreshWeek();
@@ -1115,6 +1167,13 @@ function MiscPanel({
                       </option>
                     ))}
                   </select>
+                  <input
+                    className="task-url-edit-input"
+                    value={editUrl}
+                    onChange={(event) => setEditUrl(event.target.value)}
+                    placeholder="Link (optional)"
+                    type="url"
+                  />
                 </div>
                 <div className="misc-task-actions">
                   <button
@@ -1145,6 +1204,11 @@ function MiscPanel({
               <>
                 <div className="misc-task-main">
                   <span className={`row-label misc-task-text ${task.completed ? "done-text" : ""}`}>{task.text}</span>
+                  {task.url && (
+                    <a href={task.url} target="_blank" rel="noopener noreferrer" className="task-link-badge" onClick={(e) => e.stopPropagation()}>
+                      <ExternalLink size={10} />
+                    </a>
+                  )}
                 </div>
                 <div className="misc-task-actions">
                     <span className={`priority-badge priority-${task.priority}`}>
@@ -1238,6 +1302,13 @@ function MiscPanel({
                           </option>
                         ))}
                       </select>
+                      <input
+                        className="task-url-edit-input"
+                        value={editUrl}
+                        onChange={(event) => setEditUrl(event.target.value)}
+                        placeholder="Link (optional)"
+                        type="url"
+                      />
                     </div>
                     <div className="misc-task-actions">
                       <button
@@ -1268,6 +1339,11 @@ function MiscPanel({
                   <>
                     <div className="misc-task-main">
                       <span className="row-label misc-task-text done-text">{task.text}</span>
+                      {task.url && (
+                        <a href={task.url} target="_blank" rel="noopener noreferrer" className="task-link-badge" onClick={(e) => e.stopPropagation()}>
+                          <ExternalLink size={10} />
+                        </a>
+                      )}
                     </div>
                     <div className="misc-task-actions">
                       <span className={`priority-badge priority-${task.priority}`}>
@@ -1356,6 +1432,11 @@ function TodayTasksPanel({
                 {task.completed ? "✓" : ""}
               </button>
               <span className="row-label">{task.text}</span>
+              {task.url && (
+                <a href={task.url} target="_blank" rel="noopener noreferrer" className="task-link-badge" onClick={(e) => e.stopPropagation()}>
+                  <ExternalLink size={10} />
+                </a>
+              )}
             </div>
           </div>
         ))}
@@ -1386,7 +1467,7 @@ function TodayTasksPanel({
 
         {overdue.length > 0 && (
           <>
-            <div className="day-modal-divider day-modal-divider--overdue">Overdue</div>
+            <div className="overdue-section-heading">Overdue</div>
             {overdue.map((task) => (
               <div key={task.id} className="habit-entry">
                 <div className="habit-row today-task-row today-task-overdue">
@@ -1396,7 +1477,7 @@ function TodayTasksPanel({
                   >
                     {task.completed ? "✓" : ""}
                   </button>
-                  <span className="row-label">{task.text}</span>
+                  <span className="row-label today-task-overdue-text">{task.text}</span>
                 </div>
               </div>
             ))}
@@ -1530,129 +1611,6 @@ function HabitsPanel({
   return <motion.section className="surface-card habits-panel" {...reveal}>{inner}</motion.section>;
 }
 
-// ─── Recurring Panel ─────────────────────────────────────────────────────────
-
-function RecurringPanel({
-  onAddNew,
-  refreshKey,
-}: {
-  onAddNew: () => void;
-  refreshKey: number;
-}) {
-  const [tasks, setTasks] = useState<RecurringTask[]>([]);
-  const [open, setOpen] = useState(false);
-
-  async function load() {
-    const data = await api.getRecurringTasks();
-    setTasks(data);
-  }
-
-  useEffect(() => {
-    void load();
-  }, [refreshKey]);
-
-  async function toggleActive(task: RecurringTask) {
-    await api.updateRecurringTask(task.id, { is_active: !task.is_active });
-    await load();
-  }
-
-  async function remove(task: RecurringTask) {
-    await api.deleteRecurringTask(task.id);
-    await load();
-  }
-
-  const active = tasks.filter((t) => t.is_active);
-  const inactive = tasks.filter((t) => !t.is_active);
-
-  return (
-    <motion.section className="surface-card" {...reveal}>
-      <button type="button" className="surface-toggle" onClick={() => setOpen((v) => !v)}>
-        <div>
-          <h3>Recurring</h3>
-          <p className="eyebrow">{active.length} active rule{active.length !== 1 ? "s" : ""}</p>
-        </div>
-        <ChevronDown className={open ? "open" : ""} size={18} />
-      </button>
-
-      {open && (
-        <div className="toggle-panel">
-          {/* Active rules */}
-          <div className="recurring-list">
-            {active.map((task) => (
-              <RecurringRow key={task.id} task={task} onToggle={toggleActive} onDelete={remove} />
-            ))}
-            {active.length === 0 && (
-              <p className="recurring-empty">No active rules yet.</p>
-            )}
-          </div>
-
-          <button type="button" className="recurring-add-btn" onClick={onAddNew}>
-            <Plus size={14} />
-            New recurring task
-          </button>
-
-          {/* Inactive / paused */}
-          {inactive.length > 0 && (
-            <>
-              <div className="session-subheading" style={{ marginTop: "1rem" }}>Paused</div>
-              <div className="recurring-list">
-                {inactive.map((task) => (
-                  <RecurringRow key={task.id} task={task} onToggle={toggleActive} onDelete={remove} />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </motion.section>
-  );
-}
-
-function RecurringRow({
-  task,
-  onToggle,
-  onDelete,
-}: {
-  task: RecurringTask;
-  onToggle: (t: RecurringTask) => Promise<void>;
-  onDelete: (t: RecurringTask) => Promise<void>;
-}) {
-  return (
-    <div className={`recurring-row ${task.is_active ? "" : "recurring-row-inactive"}`}>
-      <div className="recurring-row-main">
-        <span className={`priority-badge priority-${task.priority}`}>{task.priority === "high" ? "High" : task.priority === "low" ? "Low" : "Med"}</span>
-        <span className="recurring-row-text">{task.text}</span>
-      </div>
-      <div className="recurring-row-meta">
-        <span className="recurring-row-days">
-          {DAY_LABELS.filter((_, i) => task.days_of_week.includes(i)).join(" · ")}
-        </span>
-        {task.end_date && (
-          <span className="recurring-row-end">until {new Date(`${task.end_date}T12:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-        )}
-      </div>
-      <div className="recurring-row-actions">
-        <button
-          type="button"
-          className="icon-button"
-          title={task.is_active ? "Pause" : "Resume"}
-          onClick={() => void onToggle(task)}
-        >
-          {task.is_active ? <X size={14} /> : <Check size={14} />}
-        </button>
-        <button
-          type="button"
-          className="icon-button danger"
-          title="Delete rule"
-          onClick={() => void onDelete(task)}
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─── Notes Panel ─────────────────────────────────────────────────────────────
 
 function NotesPanel() {
@@ -1754,8 +1712,6 @@ export function TodayPage({
   const [weekStart, setWeekStart] = useState(() => getWeekStart(selectedDate));
   const [addModalDate, setAddModalDate] = useState<string | null>(null);
   const [addMisc, setAddMisc] = useState(false);
-  const [addRecurring, setAddRecurring] = useState(false);
-  const [recurringRefreshKey, setRecurringRefreshKey] = useState(0);
   const [expandedDayDate, setExpandedDayDate] = useState<string | null>(null);
 
   const today = getTodayString();
@@ -1814,8 +1770,9 @@ export function TodayPage({
     priority: TaskPriority,
     date: string | null,
     is_misc: boolean,
+    url: string = "",
   ) {
-    await api.createTask(text, { date: date ?? undefined, priority, is_misc });
+    await api.createTask(text, { date: date ?? undefined, priority, is_misc, url });
     await refreshAll();
   }
 
@@ -1826,7 +1783,6 @@ export function TodayPage({
     end_date: string | null,
   ) {
     await api.createRecurringTask({ text, priority, days_of_week, end_date });
-    setRecurringRefreshKey((k) => k + 1);
     await refreshAll();
   }
 
@@ -1847,15 +1803,13 @@ export function TodayPage({
   return (
     <section className="page today-page">
       {/* Add Task Modal */}
-      {(addModalDate !== null || addMisc || addRecurring) && (
+      {(addModalDate !== null || addMisc) && (
         <AddTaskModal
           defaultDate={addModalDate ?? today}
           defaultMisc={addMisc}
-          defaultRecurring={addRecurring}
           onClose={() => {
             setAddModalDate(null);
             setAddMisc(false);
-            setAddRecurring(false);
           }}
           onSubmit={async (text, priority, date, is_misc) => {
             await handleAddTask(text, priority, date, is_misc);
@@ -1977,12 +1931,6 @@ export function TodayPage({
           )}
         </motion.section>
       </div>
-
-      {/* Recurring tasks */}
-      <RecurringPanel
-        onAddNew={() => setAddRecurring(true)}
-        refreshKey={recurringRefreshKey}
-      />
 
       {/* Notes */}
       {showNotes && <NotesPanel />}

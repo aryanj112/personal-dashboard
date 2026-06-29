@@ -126,7 +126,6 @@ function GuitarSessionEditor({
   const initialForm = useMemo(
     () => ({
       section_ids: session?.sections.map((section) => section.id) ?? [],
-      notes: session?.notes ?? "",
     }),
     [session],
   );
@@ -139,7 +138,7 @@ function GuitarSessionEditor({
 
   const draftRef = useDiscardDraft({
     enabled: !session,
-    dirty: form.section_ids.length > 0 || form.notes.trim().length > 0,
+    dirty: form.section_ids.length > 0,
     onDiscard: resetForm,
   });
 
@@ -148,7 +147,7 @@ function GuitarSessionEditor({
       date,
       section_ids: form.section_ids,
       duration_minutes: 0,
-      notes: form.notes,
+      notes: "",
     };
     if (session) {
       await api.updateSession("guitar", session.id, payload);
@@ -186,13 +185,6 @@ function GuitarSessionEditor({
           );
         })}
       </div>
-      <textarea
-        className="field-textarea"
-        rows={3}
-        value={form.notes}
-        placeholder="Notes"
-        onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-      />
       <div className="editor-actions">
         <button className="primary-button" type="button" onClick={() => void save()}>
           {session ? "Save" : "Add session"}

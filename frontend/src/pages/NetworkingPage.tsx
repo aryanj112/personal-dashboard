@@ -7,13 +7,16 @@ import {
   Pencil,
   Plus,
   Search,
+  Trash2,
   UserPlus,
   X,
 } from "lucide-react";
 import type { ChangeEvent, FormEvent, SyntheticEvent } from "react";
 import { createPortal } from "react-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { openUrl } from "../lib/openUrl";
 import { api } from "../lib/api";
+import type { Company } from "../lib/types";
 import {
   NETWORKING_LOCATION_FILTER_ALL,
   NETWORKING_ROLE_FILTER_ALL,
@@ -78,9 +81,19 @@ export function NetworkingPage({ options }: { options: NetworkingOptionConfig })
   const [potentialSelectionLength, setPotentialSelectionLength] = useState(0);
   const [showPotentialCompanyEditor, setShowPotentialCompanyEditor] = useState(false);
   const [showCompanyCounts, setShowCompanyCounts] = useState(false);
+  const [confirmDeletePotentialId, setConfirmDeletePotentialId] = useState<number | null>(null);
   const [draftContact, setDraftContact] = useState<NetworkingContact | null>(null);
   const [editingContactId, setEditingContactId] = useState<number | null>(null);
   const [newInteractionDraft, setNewInteractionDraft] = useState<{ date: string; type: string; summary: string } | null>(null);
+  const [dbCompanies, setDbCompanies] = useState<Company[]>([]);
+
+  const loadDbCompanies = useCallback(async () => {
+    const { companies: data } = await api.getCompanies();
+    setDbCompanies(data);
+  }, []);
+
+  useEffect(() => { void loadDbCompanies(); }, [loadDbCompanies]);
+
   const companies = useMemo(() => getNetworkingCompanies(contacts), [contacts]);
   const potentialCompanies = useMemo(
     () => ["All companies", ...Array.from(new Set(potentialConnects.map((connect) => connect.company))).sort()],
@@ -418,7 +431,7 @@ export function NetworkingPage({ options }: { options: NetworkingOptionConfig })
     }
 
     if (potentialDraft.linkedin) {
-      window.open(potentialDraft.linkedin, "_blank", "noopener,noreferrer");
+      void openUrl(potentialDraft.linkedin);
     }
     if (potentialDraft.connectionRequest) {
       await navigator.clipboard.writeText(potentialDraft.connectionRequest);
@@ -441,6 +454,16 @@ export function NetworkingPage({ options }: { options: NetworkingOptionConfig })
           ? potentialDraft.dateSent || getTodayString()
           : potentialDraft.dateSent,
     });
+  }
+
+  async function deletePotentialConnect(id: number) {
+    await api.deletePotentialConnect(id);
+    setConfirmDeletePotentialId(null);
+    if (selectedPotentialConnectId === id) {
+      setSelectedPotentialConnectId(null);
+      setPotentialDraft(null);
+    }
+    await loadPotentialConnects();
   }
 
   function isPotentialConnectSaved(connect: PotentialConnect) {
@@ -614,31 +637,66 @@ export function NetworkingPage({ options }: { options: NetworkingOptionConfig })
             ) : (
               <AnimatePresence initial={false}>
                 {filteredPotentialConnects.map((connect) => (
-                  <motion.button
+                  <motion.div
                     key={connect.id}
                     layout
                     initial={{ opacity: 0, y: 10, scale: 0.985 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.985, transition: { duration: 0.18, ease: EASE } }}
                     transition={{ duration: 0.22, ease: EASE }}
-                    type="button"
-                    className={`networking-outreach-card ${
-                      selectedPotentialConnectId === connect.id ? "active" : ""
-                    }`}
-                    onClick={() => openPotentialConnect(connect)}
+                    className="networking-outreach-card-wrap"
                   >
-                    <div className="networking-outreach-card-header">
-                      <div>
-                        <strong>{connect.name}</strong>
-                        <p>{connect.company}</p>
+                    <button
+                      type="button"
+                      className={`networking-outreach-card ${
+                        selectedPotentialConnectId === connect.id ? "active" : ""
+                      }`}
+                      onClick={() => { openPotentialConnect(connect); setConfirmDeletePotentialId(null); }}
+                    >
+                      <div className="networking-outreach-card-header">
+                        <div>
+                          <strong>{connect.name}</strong>
+                          <p>{connect.company}</p>
+                        </div>
+                        <span className={`networking-badge ${getPotentialStatusClassName(connect.status)}`}>
+                          {connect.status}
+                        </span>
                       </div>
-                      <span className={`networking-badge ${getPotentialStatusClassName(connect.status)}`}>
-                        {connect.status}
-                      </span>
+                      <small>{connect.role}</small>
+                      <p>{connect.connectionRequest}</p>
+                    </button>
+                    <div className="networking-outreach-card-actions">
+                      {confirmDeletePotentialId === connect.id ? (
+                        <>
+                          <button
+                            type="button"
+                            className="icon-button danger"
+                            onClick={() => void deletePotentialConnect(connect.id)}
+                            aria-label="Confirm delete"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => setConfirmDeletePotentialId(null)}
+                            aria-label="Cancel"
+                          >
+                            <X size={13} />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="icon-button networking-outreach-delete-btn"
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeletePotentialId(connect.id); }}
+                          aria-label={`Delete ${connect.name}`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
-                    <small>{connect.role}</small>
-                    <p>{connect.connectionRequest}</p>
-                  </motion.button>
+                  </motion.div>
                 ))}
               </AnimatePresence>
             )}
@@ -667,7 +725,13 @@ export function NetworkingPage({ options }: { options: NetworkingOptionConfig })
                             value={potentialDraft.company}
                             onChange={handlePotentialDraftChange}
                             placeholder="Company"
+                            list="db-companies-datalist"
                           />
+                          <datalist id="db-companies-datalist">
+                            {dbCompanies.map((c) => (
+                              <option key={c.id} value={c.name} />
+                            ))}
+                          </datalist>
                           <button
                             type="button"
                             className="icon-button"
@@ -750,7 +814,7 @@ export function NetworkingPage({ options }: { options: NetworkingOptionConfig })
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => potentialDraft.linkedin && window.open(potentialDraft.linkedin, "_blank", "noopener,noreferrer")}
+                      onClick={() => potentialDraft.linkedin && void openUrl(potentialDraft.linkedin)}
                       disabled={!potentialDraft.linkedin}
                     >
                       <ExternalLink size={16} />
@@ -1063,14 +1127,15 @@ export function NetworkingPage({ options }: { options: NetworkingOptionConfig })
                         </label>
                         <label>
                           <span className="metric-label">Company</span>
-                          <select name="company" value={draftContact.company} onChange={handleDraftChange} required>
-                            <option value="">Select company</option>
-                            {options.companyOptions.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
+                          <CompanyCombobox
+                            value={draftContact.company}
+                            companies={dbCompanies}
+                            onChange={(val) => setDraftContact((d) => d ? { ...d, company: val } : d)}
+                            onCompanyAdded={(c) => {
+                              setDbCompanies((prev) => [...prev, c]);
+                              setDraftContact((d) => d ? { ...d, company: c.name } : d);
+                            }}
+                          />
                         </label>
                       </div>
 
@@ -1453,4 +1518,99 @@ function formatPotentialStatusLabel(status: PotentialConnectStatus) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+// ─── Company Combobox ────────────────────────────────────────────────────────
+
+function CompanyCombobox({
+  value,
+  companies,
+  onChange,
+  onCompanyAdded,
+}: {
+  value: string;
+  companies: Company[];
+  onChange: (val: string) => void;
+  onCompanyAdded: (company: Company) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => {
+    const q = value.toLowerCase();
+    return q ? companies.filter((c) => c.name.toLowerCase().includes(q)) : companies;
+  }, [value, companies]);
+
+  const exactMatch = companies.some((c) => c.name.toLowerCase() === value.toLowerCase());
+
+  // Close on outside click
+  useEffect(() => {
+    function onPointerDown(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
+
+  async function handleAddNew() {
+    if (!value.trim() || adding) return;
+    setAdding(true);
+    try {
+      const newCompany = await api.createCompany({
+        name: value.trim(),
+        category: "Other",
+        careersUrl: "",
+      });
+      onCompanyAdded(newCompany);
+      setOpen(false);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div className="company-combobox" ref={containerRef}>
+      <input
+        ref={inputRef}
+        className="company-combobox-input"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Type or select a company…"
+        autoComplete="off"
+      />
+      {open && (
+        <div className="company-combobox-dropdown">
+          {filtered.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`company-combobox-option${c.name === value ? " selected" : ""}`}
+              onPointerDown={(e) => { e.preventDefault(); onChange(c.name); setOpen(false); }}
+            >
+              {c.name}
+            </button>
+          ))}
+          {value.trim() && !exactMatch && (
+            <button
+              type="button"
+              className="company-combobox-add"
+              onPointerDown={(e) => { e.preventDefault(); void handleAddNew(); }}
+              disabled={adding}
+            >
+              <Plus size={13} />
+              {adding ? "Adding…" : `Add "${value.trim()}" to companies`}
+            </button>
+          )}
+          {filtered.length === 0 && !value.trim() && (
+            <p className="company-combobox-empty">No companies yet.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

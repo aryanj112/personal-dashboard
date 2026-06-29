@@ -91,8 +91,8 @@ def api_create_task(payload: TaskCreate) -> dict[str, Any]:
         ).fetchone()["next_sort"]
         cursor = conn.execute(
             """
-            INSERT INTO tasks(text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc)
-            VALUES(?, ?, 0, ?, ?, ?, ?, ?)
+            INSERT INTO tasks(text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url)
+            VALUES(?, ?, 0, ?, ?, ?, ?, ?, ?)
             """,
             (
                 payload.text.strip(),
@@ -102,10 +102,11 @@ def api_create_task(payload: TaskCreate) -> dict[str, Any]:
                 payload.checklist_id,
                 payload.priority,
                 is_misc,
+                payload.url or "",
             ),
         )
         row = conn.execute(
-            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc FROM tasks WHERE id = ?",
+            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url FROM tasks WHERE id = ?",
             (cursor.lastrowid,),
         ).fetchone()
         return serialize_task(row)
@@ -115,7 +116,7 @@ def api_create_task(payload: TaskCreate) -> dict[str, Any]:
 def api_update_task(task_id: int, payload: TaskUpdate) -> dict[str, Any]:
     with get_db() as conn:
         current = conn.execute(
-            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc FROM tasks WHERE id = ?",
+            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url FROM tasks WHERE id = ?",
             (task_id,),
         ).fetchone()
         if not current:
@@ -134,7 +135,7 @@ def api_update_task(task_id: int, payload: TaskUpdate) -> dict[str, Any]:
         conn.execute(
             """
             UPDATE tasks
-            SET text = ?, completed = ?, notes = ?, sort_order = ?, task_date = ?, priority = ?, is_misc = ?
+            SET text = ?, completed = ?, notes = ?, sort_order = ?, task_date = ?, priority = ?, is_misc = ?, url = ?
             WHERE id = ?
             """,
             (
@@ -149,11 +150,12 @@ def api_update_task(task_id: int, payload: TaskUpdate) -> dict[str, Any]:
                 next_task_date,
                 payload.priority if payload.priority is not None else current["priority"],
                 next_is_misc,
+                payload.url if payload.url is not None else current["url"],
                 task_id,
             ),
         )
         row = conn.execute(
-            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc FROM tasks WHERE id = ?",
+            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url FROM tasks WHERE id = ?",
             (task_id,),
         ).fetchone()
         return serialize_task(row)
@@ -295,7 +297,7 @@ def api_create_task_from_checklist(checklist_id: int, payload: ChecklistProgress
 
         existing = conn.execute(
             """
-            SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc
+            SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url
             FROM tasks
             WHERE checklist_id = ? AND task_date = ?
             ORDER BY id DESC
@@ -312,13 +314,13 @@ def api_create_task_from_checklist(checklist_id: int, payload: ChecklistProgress
         ).fetchone()["next_sort"]
         cursor = conn.execute(
             """
-            INSERT INTO tasks(text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc)
-            VALUES(?, ?, 0, NULL, ?, ?, 'medium', 0)
+            INSERT INTO tasks(text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url)
+            VALUES(?, ?, 0, NULL, ?, ?, 'medium', 0, '')
             """,
             (tracker["text"], payload.date.isoformat(), next_sort, checklist_id),
         )
         row = conn.execute(
-            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc FROM tasks WHERE id = ?",
+            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url FROM tasks WHERE id = ?",
             (cursor.lastrowid,),
         ).fetchone()
         return serialize_task(row)

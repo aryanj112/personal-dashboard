@@ -437,7 +437,7 @@ textarea {
 
 .page-frame {
   min-height: calc(100vh - 8rem);
-  max-width: 1200px;
+  max-width: 1480px;
   margin: 0 auto;
   border-radius: 2rem;
   padding: 1.75rem 3.25rem 2.1rem;
@@ -1284,21 +1284,44 @@ textarea {
 
 .pie-ring {
   position: relative;
-  width: min(220px, 100%);
+  width: 100%;
+  max-width: 220px;
   aspect-ratio: 1;
+  justify-self: center;
   margin: 0 auto;
   border-radius: 50%;
-  padding: 1.05rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.pie-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.pie-track,
+.pie-slice {
+  fill: none;
+  stroke-width: 16;
+}
+
+.pie-track {
+  stroke: color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.pie-slice {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
 }
 
 .pie-hole {
+  position: absolute;
+  inset: 17%;
   display: grid;
   place-items: center;
   align-content: center;
   gap: 0.18rem;
-  width: 100%;
-  height: 100%;
   border-radius: 50%;
   background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
   border: 1px solid var(--line);
@@ -1318,6 +1341,7 @@ textarea {
 .legend-list {
   display: grid;
   gap: 0.7rem;
+  min-width: 0;
 }
 
 .legend-item {
@@ -1680,238 +1704,6 @@ textarea {
 .settings-module-stack {
   display: grid;
   gap: 1rem;
-}
-
-.reflection-grid,
-.reflection-notes-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-}
-
-.reflection-breath-card {
-  overflow: hidden;
-}
-
-.reflection-quote-banner {
-  display: grid;
-  gap: 1rem;
-  width: 100%;
-  min-height: 15rem;
-  padding: 0.55rem 0 0.25rem;
-}
-
-.reflection-quote-banner-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-}
-
-.reflection-quote-banner-copy {
-  display: grid;
-  gap: 0.9rem;
-  justify-items: center;
-  align-content: center;
-  text-align: center;
-  min-height: 100%;
-  padding: 1.2rem 1rem 1.6rem;
-}
-
-.reflection-quote-banner-copy blockquote {
-  width: min(100%, 52rem);
-  margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  font-size: clamp(2rem, 4.6vw, 3.6rem);
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-}
-
-.reflection-quote-banner-copy small {
-  font-size: 1rem;
-}
-
-.reflection-video-stage {
-  display: grid;
-  align-items: end;
-  position: relative;
-  min-height: 38rem;
-  margin: 0.35rem 0 0.65rem;
-  border-radius: 1.9rem;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: #000;
-  box-shadow: var(--shadow);
-}
-
-.reflection-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.82;
-  filter: saturate(1) contrast(0.92);
-}
-
-.reflection-video-overlay {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(26, 28, 34, 0.22) 38%, rgba(16, 18, 23, 0.52) 100%),
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.16), transparent 42%);
-}
-
-.reflection-video-top,
-.reflection-video-copy {
-  position: relative;
-  z-index: 1;
-}
-
-.reflection-video-top {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  right: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.reflection-video-copy {
-  display: grid;
-  justify-items: center;
-  gap: 0.75rem;
-  width: min(100%, 48rem);
-  margin: 0 auto;
-  padding: 2rem 1.35rem;
-  color: #f4f8ef;
-  text-align: center;
-}
-
-.reflection-video-copy p {
-  margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  font-size: clamp(1.9rem, 4vw, 3.15rem);
-  line-height: 1.1;
-  text-shadow: 0 10px 34px rgba(15, 27, 18, 0.34);
-}
-
-.reflection-quote-shell,
-.reflection-breath-shell,
-.reflection-thought-card,
-.reflection-note-card {
-  border: 1px solid var(--line);
-  border-radius: 1.2rem;
-  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
-}
-
-.reflection-thought-card p,
-.reflection-note-card p {
-  margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  font-size: 1.25rem;
-  line-height: 1.35;
-}
-
-.reflection-quote-banner-copy small,
-.reflection-note-card small {
-  color: var(--text-soft);
-}
-
-.reflection-breath-shell {
-  display: grid;
-  gap: 1.15rem;
-  justify-items: center;
-  padding: 1.3rem;
-}
-
-.reflection-breath-ring {
-  display: grid;
-  place-items: center;
-  width: min(240px, 100%);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at center, color-mix(in srgb, var(--accent-soft) 34%, transparent) 0 48%, transparent 49%),
-    conic-gradient(from 180deg, color-mix(in srgb, var(--accent-strong) 30%, transparent), color-mix(in srgb, var(--success) 25%, transparent), color-mix(in srgb, var(--accent) 35%, transparent));
-  padding: 1rem;
-  animation: reflection-breathe 8s ease-in-out infinite;
-}
-
-.reflection-breath-core {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
-  border: 1px solid var(--line);
-}
-
-.reflection-breath-core strong {
-  font-size: 1.55rem;
-}
-
-.reflection-breath-core span,
-.reflection-breath-shell p,
-.reflection-field .metric-label {
-  color: var(--text-soft);
-}
-
-.reflection-breath-shell p {
-  max-width: 26rem;
-  margin: 0;
-  text-align: center;
-}
-
-.reflection-thought-card {
-  padding: 1.2rem 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.reflection-thought-copy {
-  margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  font-size: 1.25rem;
-  line-height: 1.35;
-}
-
-.reflection-field {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.reflection-followup-field {
-  margin-top: 0;
-}
-
-.reflection-equal-card {
-  display: grid;
-  align-content: start;
-  gap: 0.7rem;
-  grid-template-rows: auto 1fr;
-  min-height: 18.25rem;
-}
-
-.reflection-grow-field {
-  height: 100%;
-}
-
-.reflection-grow-textarea {
-  height: 100%;
-  min-height: 7.5rem;
-}
-
-@keyframes reflection-breathe {
-  0%,
-  100% {
-    transform: scale(0.96);
-  }
-  50% {
-    transform: scale(1);
-  }
 }
 
 .finance-grid {
@@ -2929,8 +2721,6 @@ textarea {
   .finance-panel-grid,
   .finance-entry-grid,
   .finance-subscription-grid,
-  .reflection-grid,
-  .reflection-notes-grid,
   .today-grid,
   .module-top-grid,
   .module-bottom-grid,
@@ -3014,10 +2804,6 @@ textarea {
 
   .finance-wishlist-table {
     min-width: 640px;
-  }
-
-  .reflection-video-stage {
-    min-height: 30rem;
   }
 
   .topbar-link,
@@ -3708,6 +3494,25 @@ textarea {
   color: var(--text-soft);
 }
 
+.overdue-section-heading {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--danger);
+  margin: 0.75rem 0 0.25rem;
+}
+
+.today-task-overdue {
+  background: transparent;
+  border-color: transparent;
+}
+
+.today-task-overdue-text {
+  color: var(--danger);
+  text-decoration: none;
+}
+
 /* Priority badge (small pill label on misc rows) */
 .priority-badge {
   flex: 0 0 auto;
@@ -3891,8 +3696,10 @@ textarea {
 }
 
 .modal-date-input {
+  width: min(100%, 16rem);
+  min-width: 13rem;
   padding: 0.7rem 1rem;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
 }
 
 /* ── Responsive ─────────────────────────────────────────────────── */

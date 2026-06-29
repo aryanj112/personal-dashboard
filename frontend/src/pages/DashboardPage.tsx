@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight, ChevronDown, Copy, Flame, RefreshCw, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Heatmap, TinyBarChart, TrendLine, WeeklyPieChart } from "../components/Charts";
+import { Heatmap, WeeklyPieChart } from "../components/Charts";
 import {
   ExerciseSessionDetails,
   GuitarSessionDetails,
@@ -37,11 +37,6 @@ export function DashboardPage({
     show_dashboard_refresh: boolean;
     show_open_today: boolean;
     show_export_today: boolean;
-    show_today_complete: boolean;
-    show_guitar_cadence: boolean;
-    show_training_rhythm: boolean;
-    show_guitar_trend: boolean;
-    show_training_trend: boolean;
   };
   onNavigate: (route: "today") => void;
   onRefresh: () => Promise<void>;
@@ -199,30 +194,6 @@ export function DashboardPage({
           ) : null}
         </div>
       </motion.div>
-
-      <div className="metric-grid">
-        {preferences.show_today_complete ? (
-          <motion.article className="metric-card" {...panelTransition}>
-            <span className="metric-label">Today complete</span>
-            <strong>{completedCount}/{totalCount}</strong>
-            <small>habits and tasks closed</small>
-          </motion.article>
-        ) : null}
-        {preferences.show_guitar_cadence ? (
-          <motion.article className="metric-card" {...panelTransition}>
-            <span className="metric-label">Guitar cadence</span>
-            <strong>{data.guitar.sessions_last_7_days}</strong>
-            <small>sessions in the last 7 days</small>
-          </motion.article>
-        ) : null}
-        {preferences.show_training_rhythm ? (
-          <motion.article className="metric-card" {...panelTransition}>
-            <span className="metric-label">Training rhythm</span>
-            <strong>{data.workouts.sessions_last_7_days}</strong>
-            <small>sessions in the last 7 days</small>
-          </motion.article>
-        ) : null}
-      </div>
 
       <div className="content-grid dashboard-main-grid">
         <motion.section className="surface-card focus-panel" {...panelTransition}>
@@ -416,29 +387,6 @@ export function DashboardPage({
           />
         </motion.section>
 
-        {preferences.show_guitar_trend ? (
-          <motion.section className="surface-card" {...panelTransition}>
-            <div className="surface-header">
-              <div>
-                <p className="eyebrow">Guitar trend</p>
-                <h3>Eight-week cadence</h3>
-              </div>
-            </div>
-            <TinyBarChart points={data.guitar.weekly_minutes} labelKey="week_start" />
-          </motion.section>
-        ) : null}
-
-        {preferences.show_training_trend ? (
-          <motion.section className="surface-card" {...panelTransition}>
-            <div className="surface-header">
-              <div>
-                <p className="eyebrow">Training trend</p>
-                <h3>Rolling pace</h3>
-              </div>
-            </div>
-            <TrendLine points={data.workouts.rolling_average} />
-          </motion.section>
-        ) : null}
       </div>
 
       {showExportModal ? (

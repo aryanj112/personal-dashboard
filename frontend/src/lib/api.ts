@@ -1,6 +1,7 @@
 import type {
   Company,
   DashboardResponse,
+  DiscoverResponse,
   FinanceCategory,
   FinanceExpense,
   FinanceResponse,
@@ -8,6 +9,7 @@ import type {
   FinanceWishlistItem,
   Goal,
   GuitarMaterial,
+  QuickLink,
   GuitarResponse,
   InternshipCompany,
   InternshipCompanyDetailResponse,
@@ -15,8 +17,8 @@ import type {
   GuitarSong,
   GuitarSongFile,
   RecurringTask,
-  ReflectionResponse,
   ModuleResponse,
+  ScrapeAllResult,
   Session,
   Task,
   TaskPriority,
@@ -77,7 +79,7 @@ export const api = {
     const query = weekStart ? `?week_start=${weekStart}` : "";
     return request<WeekResponse>(`/api/tasks/week${query}`);
   },
-  createTask(text: string, options: { date?: string; priority?: TaskPriority; is_misc?: boolean } = {}) {
+  createTask(text: string, options: { date?: string; priority?: TaskPriority; is_misc?: boolean; url?: string } = {}) {
     return request<Task>("/api/tasks", {
       method: "POST",
       body: JSON.stringify({
@@ -85,6 +87,7 @@ export const api = {
         date: options.date ?? null,
         priority: options.priority ?? "medium",
         is_misc: options.is_misc ?? false,
+        url: options.url ?? "",
       }),
     });
   },
@@ -293,6 +296,18 @@ export const api = {
       method: "POST",
     });
   },
+  scrapeAllInternships() {
+    return request<ScrapeAllResult>("/api/internships/scrape-all", { method: "POST" });
+  },
+  discoverInternships(days = 14) {
+    return request<DiscoverResponse>(`/api/internships/discover?days=${days}`);
+  },
+  updateInternshipPostingStatus(postingId: number, status: InternshipManualBucket) {
+    return request<{ ok: boolean }>(`/api/internships/postings/${postingId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
   async compileResumePdf(name: string, source: string, signal?: AbortSignal) {
     const response = await fetch(`${API_BASE}/api/resume/compile`, {
       method: "POST",
@@ -348,12 +363,14 @@ export const api = {
       }),
     });
   },
+  deletePotentialConnect(connectId: number) {
+    return request<{ ok: boolean }>(`/api/networking/potential-connects/${connectId}`, {
+      method: "DELETE",
+    });
+  },
   getFinance(month?: string) {
     const query = month ? `?month=${month}` : "";
     return request<FinanceResponse>(`/api/finance${query}`);
-  },
-  getReflection() {
-    return request<ReflectionResponse>("/api/reflection");
   },
   getFinanceCategories() {
     return request<{ categories: FinanceCategory[] }>("/api/finance/categories");
@@ -587,6 +604,18 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     });
+  },
+  getLinks() {
+    return request<QuickLink[]>("/api/links");
+  },
+  createLink(label: string, url: string) {
+    return request<QuickLink>("/api/links", {
+      method: "POST",
+      body: JSON.stringify({ label, url }),
+    });
+  },
+  deleteLink(id: number) {
+    return request<{ ok: boolean }>(`/api/links/${id}`, { method: "DELETE" });
   },
 };
 

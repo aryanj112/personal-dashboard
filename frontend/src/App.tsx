@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { startTransition, useEffect, useState } from "react";
 import { Layout } from "./components/Layout";
 import { api } from "./lib/api";
@@ -7,18 +8,15 @@ import {
 } from "./lib/networking";
 import type {
   DashboardResponse,
-  FinanceCategory,
   GuitarResponse,
   ModuleResponse,
   TodayResponse,
 } from "./lib/types";
 import { DashboardPage } from "./pages/DashboardPage";
-import { FinancePage } from "./pages/FinancePage";
 import { GuitarPage } from "./pages/GuitarPage";
 import { InternshipsPage } from "./pages/InternshipsPage";
 import { ModulePage } from "./pages/ModulePage";
 import { NetworkingPage } from "./pages/NetworkingPage";
-import { ReflectionPage } from "./pages/ReflectionPage";
 import { ResumePage } from "./pages/ResumePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { TodayPage } from "./pages/TodayPage";
@@ -31,8 +29,6 @@ type Route =
   | "networking"
   | "internships"
   | "resume"
-  | "finance"
-  | "reflection"
   | "settings";
 type ColorTheme = "light" | "dark";
 type SurfaceMood = "studio" | "industrial";
@@ -40,14 +36,9 @@ type DashboardPreferences = {
   show_dashboard_refresh: boolean;
   show_open_today: boolean;
   show_export_today: boolean;
-  show_today_complete: boolean;
-  show_guitar_cadence: boolean;
-  show_training_rhythm: boolean;
-  show_guitar_trend: boolean;
-  show_training_trend: boolean;
-  show_finance_page: boolean;
-  show_reflection_page: boolean;
   show_notes: boolean;
+  show_og_internships: boolean;
+  show_internships: boolean;
 };
 
 const DEFAULT_ROUTE: Route = "dashboard";
@@ -57,14 +48,9 @@ const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
   show_dashboard_refresh: false,
   show_open_today: true,
   show_export_today: true,
-  show_today_complete: true,
-  show_guitar_cadence: true,
-  show_training_rhythm: true,
-  show_guitar_trend: true,
-  show_training_trend: true,
-  show_finance_page: false,
-  show_reflection_page: false,
   show_notes: false,
+  show_og_internships: false,
+  show_internships: false,
 };
 const ROUTE_STORAGE_KEY = "personal-route";
 const THEME_STORAGE_KEY = "personal-theme";
@@ -91,7 +77,6 @@ export default function App() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [guitar, setGuitar] = useState<GuitarResponse | null>(null);
   const [workouts, setWorkouts] = useState<ModuleResponse | null>(null);
-  const [financeCategories, setFinanceCategories] = useState<FinanceCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -100,18 +85,16 @@ export default function App() {
       if (today === null || dashboard === null || guitar === null || workouts === null) {
         setLoading(true);
       }
-      const [todayData, dashboardData, guitarData, workoutData, financeCategoryData] = await Promise.all([
+      const [todayData, dashboardData, guitarData, workoutData] = await Promise.all([
         api.getToday(targetDate),
         api.getDashboard(),
         api.getGuitar(),
         api.getWorkouts(),
-        api.getFinanceCategories(),
       ]);
       setToday(todayData);
       setDashboard(dashboardData);
       setGuitar(guitarData);
       setWorkouts(workoutData);
-      setFinanceCategories(financeCategoryData.categories);
       setError(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unknown error");
@@ -150,16 +133,6 @@ export default function App() {
   }, [dashboardPreferences]);
 
   useEffect(() => {
-    if (!dashboardPreferences.show_reflection_page && route === "reflection") {
-      setRoute("dashboard");
-      return;
-    }
-    if (!dashboardPreferences.show_finance_page && route === "finance") {
-      setRoute("dashboard");
-    }
-  }, [dashboardPreferences.show_finance_page, dashboardPreferences.show_reflection_page, route]);
-
-  useEffect(() => {
     window.localStorage.setItem(NETWORKING_OPTIONS_STORAGE_KEY, JSON.stringify(networkingOptions));
   }, [networkingOptions]);
 
@@ -169,13 +142,20 @@ export default function App() {
     });
   }
 
+  // Redirect away from internships if it gets hidden
+  useEffect(() => {
+    if (route === "internships" && !dashboardPreferences.show_internships) {
+      navigate("dashboard");
+    }
+  }, [dashboardPreferences.show_internships, route]);
+
   function openTasksForToday() {
     setTasksDate(getTodayString());
     navigate("today");
   }
 
   const content = route === "internships" ? (
-    <InternshipsPage timeZone={timeZone} />
+    <InternshipsPage />
   ) : route === "resume" ? (
     <ResumePage />
   ) : loading ? (
@@ -193,10 +173,6 @@ export default function App() {
     </div>
   ) : route === "networking" ? (
     <NetworkingPage options={networkingOptions} />
-  ) : route === "finance" && dashboardPreferences.show_finance_page ? (
-    <FinancePage categories={financeCategories} />
-  ) : route === "reflection" ? (
-    <ReflectionPage />
   ) : route === "today" && today ? (
     <TodayPage
       data={today}
@@ -218,7 +194,6 @@ export default function App() {
       timeZone={timeZone}
       guitar={guitar}
       workouts={workouts}
-      financeCategories={financeCategories}
       dashboardPreferences={dashboardPreferences}
       networkingOptions={networkingOptions}
       onThemeChange={setTheme}
@@ -226,7 +201,6 @@ export default function App() {
       onTimeZoneChange={setTimeZone}
       onDashboardPreferencesChange={setDashboardPreferences}
       onNetworkingOptionsChange={setNetworkingOptions}
-      onFinanceCategoriesChange={setFinanceCategories}
       onRefresh={() => loadAll(tasksDate)}
     />
   ) : dashboard && today ? (
@@ -245,8 +219,7 @@ export default function App() {
     <Layout
       route={route}
       onNavigate={navigate}
-      showFinancePage={dashboardPreferences.show_finance_page}
-      showReflectionPage={dashboardPreferences.show_reflection_page}
+      showInternships={dashboardPreferences.show_internships}
     >
       {content}
     </Layout>

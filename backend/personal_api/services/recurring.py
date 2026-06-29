@@ -18,7 +18,7 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
 def list_recurring_tasks(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
-        SELECT id, text, priority, days_of_week, end_date, is_active, created_at
+        SELECT id, text, priority, days_of_week, start_date, end_date, is_active, created_at
         FROM recurring_tasks
         ORDER BY is_active DESC, id DESC
         """
@@ -32,18 +32,19 @@ def create_recurring_task(
     days = sorted(set(d for d in payload.days_of_week if 0 <= d <= 6))
     cursor = conn.execute(
         """
-        INSERT INTO recurring_tasks(text, priority, days_of_week, end_date)
-        VALUES(?, ?, ?, ?)
+        INSERT INTO recurring_tasks(text, priority, days_of_week, start_date, end_date)
+        VALUES(?, ?, ?, ?, ?)
         """,
         (
             payload.text.strip(),
             payload.priority,
             json.dumps(days),
+            dt_date.today().isoformat(),
             payload.end_date.isoformat() if payload.end_date else None,
         ),
     )
     row = conn.execute(
-        "SELECT id, text, priority, days_of_week, end_date, is_active, created_at FROM recurring_tasks WHERE id = ?",
+        "SELECT id, text, priority, days_of_week, start_date, end_date, is_active, created_at FROM recurring_tasks WHERE id = ?",
         (cursor.lastrowid,),
     ).fetchone()
     return _row_to_dict(row)
@@ -53,7 +54,7 @@ def update_recurring_task(
     conn: sqlite3.Connection, task_id: int, payload: RecurringTaskUpdate
 ) -> dict[str, Any] | None:
     existing = conn.execute(
-        "SELECT id, text, priority, days_of_week, end_date, is_active FROM recurring_tasks WHERE id = ?",
+        "SELECT id, text, priority, days_of_week, start_date, end_date, is_active FROM recurring_tasks WHERE id = ?",
         (task_id,),
     ).fetchone()
     if not existing:
@@ -80,7 +81,7 @@ def update_recurring_task(
         ),
     )
     row = conn.execute(
-        "SELECT id, text, priority, days_of_week, end_date, is_active, created_at FROM recurring_tasks WHERE id = ?",
+        "SELECT id, text, priority, days_of_week, start_date, end_date, is_active, created_at FROM recurring_tasks WHERE id = ?",
         (task_id,),
     ).fetchone()
     return _row_to_dict(row)
@@ -106,7 +107,7 @@ def generate_tasks_for_range(
     """
     recurring = conn.execute(
         """
-        SELECT id, text, priority, days_of_week, end_date
+        SELECT id, text, priority, days_of_week, start_date, end_date
         FROM recurring_tasks
         WHERE is_active = 1
         """
@@ -120,6 +121,10 @@ def generate_tasks_for_range(
         date_str = current.isoformat()
 
         for rec in recurring:
+            # Never generate before the rule actually started.
+            if rec["start_date"] and rec["start_date"] > date_str:
+                continue
+
             # Respect the rule's own end date
             if rec["end_date"] and rec["end_date"] < date_str:
                 continue

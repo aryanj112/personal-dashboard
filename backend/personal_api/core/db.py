@@ -95,64 +95,6 @@ DEFAULT_FINANCE_CATEGORIES = [
     "Other",
 ]
 
-DEFAULT_REFLECTION_QUOTES = [
-    ("The soul becomes dyed with the color of its thoughts.", "Marcus Aurelius"),
-    ("How we spend our days is, of course, how we spend our lives.", "Annie Dillard"),
-    (
-        "There is nothing noble in being superior to your fellow man; true nobility is being superior to your former self.",
-        "Ernest Hemingway",
-    ),
-    (
-        "Between stimulus and response there is a space. In that space is our power to choose our response.",
-        "Viktor Frankl",
-    ),
-    ("No mud, no lotus.", "Thich Nhat Hanh"),
-    ("The obstacle is the way.", "Marcus Aurelius"),
-    ("The quieter you become, the more you can hear.", "Ram Dass"),
-    ("Attention is the rarest and purest form of generosity.", "Simone Weil"),
-    ("He who has a why to live can bear almost any how.", "Friedrich Nietzsche"),
-    ("Real change is often quiet before it is visible.", "Unknown"),
-    ("A disciplined mind brings happiness.", "The Buddha"),
-    ("Wherever you are, be there totally.", "Eckhart Tolle"),
-]
-
-DEFAULT_REFLECTION_PROMPTS = [
-    "Take five slow breaths. On each exhale, unclench one thing you are carrying.",
-    "What are you making heavier in your mind than it needs to be right now?",
-    "If today only needed one good decision, what would it be?",
-    "Notice your body first. Where is the tension, and what would soften it by 5%?",
-    "What are you trying to rush that would benefit from five calmer minutes?",
-    "Name one thing that is already enough in this moment.",
-    "What would it look like to meet today with steadiness instead of pressure?",
-    "Which thought has been circling lately, and what happens if you stop feeding it?",
-    "What can you release before the next hour begins?",
-    "If your nervous system could ask for one kindness right now, what would it be?",
-    "What are you carrying for other people that may not be yours to hold?",
-    "What pace would feel human today, not just productive?",
-]
-
-DEFAULT_REFLECTION_QUESTIONS = [
-    "What do you want more of in your life that your current schedule does not actually protect?",
-    "Are you chasing clarity, or are you avoiding commitment by waiting for perfect clarity?",
-    "What would your future self thank you for doing repeatedly, even when it feels small?",
-    "Which belief about yourself are you still acting from that may no longer be true?",
-    "What part of your ambition is deeply yours, and what part was inherited from other people?",
-    "If nobody could applaud this decision, would you still make it?",
-    "What keeps getting your attention for a reason you have not fully admitted yet?",
-    "Where in your life are you asking for certainty when courage would be enough?",
-    "What are you optimizing that may not matter as much as you think?",
-    "What would integrity look like in your next difficult conversation?",
-    "What do you keep saying you value that your calendar quietly disagrees with?",
-    "What are you postponing until you feel ready, even though readiness may come after action?",
-]
-
-DEFAULT_REFLECTION_VIDEOS = [
-    ("Flower", "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"),
-    ("Rain", "https://www.w3schools.com/howto/rain.mp4"),
-    ("Big Buck Bunny", "https://www.w3schools.com/html/mov_bbb.mp4"),
-    ("Joyrides", "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"),
-]
-
 # To add a new company: append to the END of this list.
 # The frontend appends unknown companies to the bottom of the user's saved order,
 # so adding here won't reset anyone's existing organization or favorites.
@@ -318,6 +260,9 @@ def _merge_company_alias(conn: sqlite3.Connection, legacy_name: str, canonical_n
     )
 
 
+BACKUP_RETENTION_COUNT = 5
+
+
 def _backup_db() -> None:
     if not DB_PATH.exists():
         return
@@ -330,6 +275,11 @@ def _backup_db() -> None:
     finally:
         dst.close()
         src.close()
+
+    existing_backups = sorted(DATA_DIR.glob("personal_backup_*.db"))
+    stale_backups = existing_backups[:-BACKUP_RETENTION_COUNT] if len(existing_backups) > BACKUP_RETENTION_COUNT else []
+    for stale in stale_backups:
+        stale.unlink(missing_ok=True)
 
 
 def create_schema() -> None:
@@ -541,15 +491,6 @@ def create_schema() -> None:
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
-            CREATE TABLE IF NOT EXISTS reflection_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                item_type TEXT NOT NULL,
-                text_value TEXT NOT NULL DEFAULT '',
-                attribution TEXT NOT NULL DEFAULT '',
-                media_url TEXT NOT NULL DEFAULT '',
-                sort_order INTEGER NOT NULL DEFAULT 0
-            );
-
             CREATE TABLE IF NOT EXISTS tracked_companies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
@@ -595,6 +536,14 @@ def create_schema() -> None:
             );
 
             INSERT OR IGNORE INTO app_notes (id, content) VALUES (1, '');
+
+            CREATE TABLE IF NOT EXISTS quick_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                label TEXT NOT NULL,
+                url TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (date('now'))
+            );
             """
         )
 
@@ -618,6 +567,8 @@ def create_schema() -> None:
             conn.execute("ALTER TABLE tasks ADD COLUMN is_misc INTEGER NOT NULL DEFAULT 0")
         if "recurring_task_id" not in task_columns:
             conn.execute("ALTER TABLE tasks ADD COLUMN recurring_task_id INTEGER")
+        if "url" not in task_columns:
+            conn.execute("ALTER TABLE tasks ADD COLUMN url TEXT NOT NULL DEFAULT ''")
 
         conn.execute(
             """
@@ -626,12 +577,27 @@ def create_schema() -> None:
                 text TEXT NOT NULL,
                 priority TEXT NOT NULL DEFAULT 'medium',
                 days_of_week TEXT NOT NULL DEFAULT '[]',
+                start_date TEXT NOT NULL DEFAULT (date('now')),
                 end_date TEXT,
                 is_active INTEGER NOT NULL DEFAULT 1,
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             )
             """
         )
+        recurring_columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(recurring_tasks)").fetchall()
+        }
+        if "start_date" not in recurring_columns:
+            conn.execute(
+                "ALTER TABLE recurring_tasks ADD COLUMN start_date TEXT NOT NULL DEFAULT ''"
+            )
+            conn.execute(
+                """
+                UPDATE recurring_tasks
+                SET start_date = COALESCE(NULLIF(substr(created_at, 1, 10), ''), date('now'))
+                WHERE start_date = ''
+                """
+            )
 
         internship_columns = {
             row["name"] for row in conn.execute("PRAGMA table_info(internship_postings)").fetchall()
@@ -848,46 +814,6 @@ def create_schema() -> None:
                 """,
                 (category_name, order),
             )
-
-        reflection_has_data = conn.execute(
-            "SELECT COUNT(*) AS count FROM reflection_items"
-        ).fetchone()["count"]
-        if reflection_has_data == 0:
-            for order, (text_value, attribution) in enumerate(DEFAULT_REFLECTION_QUOTES, start=1):
-                conn.execute(
-                    """
-                    INSERT INTO reflection_items(item_type, text_value, attribution, media_url, sort_order)
-                    VALUES('quote', ?, ?, '', ?)
-                    """,
-                    (text_value, attribution, order),
-                )
-
-            for order, text_value in enumerate(DEFAULT_REFLECTION_PROMPTS, start=1):
-                conn.execute(
-                    """
-                    INSERT INTO reflection_items(item_type, text_value, attribution, media_url, sort_order)
-                    VALUES('prompt', ?, '', '', ?)
-                    """,
-                    (text_value, order),
-                )
-
-            for order, text_value in enumerate(DEFAULT_REFLECTION_QUESTIONS, start=1):
-                conn.execute(
-                    """
-                    INSERT INTO reflection_items(item_type, text_value, attribution, media_url, sort_order)
-                    VALUES('question', ?, '', '', ?)
-                    """,
-                    (text_value, order),
-                )
-
-            for order, (text_value, media_url) in enumerate(DEFAULT_REFLECTION_VIDEOS, start=1):
-                conn.execute(
-                    """
-                    INSERT INTO reflection_items(item_type, text_value, attribution, media_url, sort_order)
-                    VALUES('video', ?, '', ?, ?)
-                    """,
-                    (text_value, media_url, order),
-                )
 
         _merge_company_alias(conn, "Anduril Industries", "Anduril")
 

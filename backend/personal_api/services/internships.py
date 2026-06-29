@@ -52,7 +52,37 @@ PRIME_NEGATIVE_PATTERN = re.compile(
     r")\b",
     re.IGNORECASE,
 )
-ALLOWED_MANUAL_BUCKETS = {"", "prime", "not_prime", "hidden"}
+ALLOWED_MANUAL_BUCKETS = {"", "prime", "not_prime", "hidden", "saved", "dismissed"}
+
+# Rubric keyword buckets for the discover view
+RUBRIC_BUCKETS: dict[str, re.Pattern[str]] = {
+    "swe": re.compile(
+        r"\b(software engineer|software dev|swe\b|full.?stack|backend|front.?end|platform|"
+        r"infrastructure|infra\b|web engineer|systems engineer)\b",
+        re.IGNORECASE,
+    ),
+    "ml_ai": re.compile(
+        r"\b(machine learning|ml\b|artificial intelligence|\bai\b|deep learning|llm\b|nlp\b|"
+        r"natural language|computer vision|research engineer|research scientist|applied ml|"
+        r"applied ai|inference|model training|reinforcement learning|rl\b|generative)\b",
+        re.IGNORECASE,
+    ),
+    "robotics": re.compile(
+        r"\b(robotic[s]?|robot\b|embedded|firmware|\bros\b|autonomy|autonomous|controls?\b|perception|"
+        r"motion planning|mechatronics|localization|\bslam\b|fpga|c\+\+|actuator|drone|uav)\b",
+        re.IGNORECASE,
+    ),
+    "climate": re.compile(
+        r"\b(climate|clean energy|sustainability|renewable|carbon|clean tech|social good|"
+        r"environmental|green energy|decarboniz|electrification)\b",
+        re.IGNORECASE,
+    ),
+    "data": re.compile(
+        r"\b(data engineer|data platform|mlops|ml ops|data pipeline|analytics engineer|"
+        r"data infrastructure|data science|lakehouse|data warehouse)\b",
+        re.IGNORECASE,
+    ),
+}
 HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
 WHITESPACE_PATTERN = re.compile(r"\s+")
 
@@ -305,6 +335,125 @@ def generate_summary_for_posting(
     if not company:
         raise LookupError("Tracked company not found.")
     return company, postings
+
+
+def scrape_all_companies(conn: sqlite3.Connection) -> dict[str, Any]:
+    companies = conn.execute(
+        """
+        SELECT id, name FROM tracked_companies
+        WHERE is_active = 1 AND source_type != 'none' AND source_type != ''
+        ORDER BY name COLLATE NOCASE
+        """
+    ).fetchall()
+
+    scraped: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+
+    for company in companies:
+        company_id = int(company["id"])
+        try:
+            _, postings = fetch_company_postings(conn, company_id)
+            scraped.append({
+                "companyId": company_id,
+                "companyName": company["name"],
+                "postingCount": len(postings),
+                "internshipCount": sum(1 for p in postings if p.get("isInternship")),
+            })
+        except Exception as exc:  # noqa: BLE001
+            errors.append({
+                "companyId": company_id,
+                "companyName": company["name"],
+                "error": str(exc),
+            })
+
+    return {
+        "scraped": scraped,
+        "errors": errors,
+        "totalCompanies": len(companies),
+        "successCount": len(scraped),
+        "errorCount": len(errors),
+    }
+
+
+def list_discover_postings(conn: sqlite3.Connection, days: int = 14) -> dict[str, Any]:
+    rows = conn.execute(
+        """
+        SELECT
+            p.id,
+            p.company_id,
+            c.name AS company_name,
+            p.title,
+            p.location,
+            p.team,
+            p.url,
+            p.description_text,
+            p.first_published_at,
+            p.updated_at_remote,
+            p.fetched_at,
+            p.manual_bucket,
+            p.is_applied,
+            p.ai_summary
+        FROM internship_postings p
+        JOIN tracked_companies c ON c.id = p.company_id
+        WHERE p.is_internship = 1 AND p.is_active = 1
+          AND p.fetched_at >= datetime('now', :days_ago)
+        ORDER BY
+            COALESCE(p.first_published_at, p.updated_at_remote, p.fetched_at) DESC,
+            p.id DESC
+        """,
+        {"days_ago": f"-{days} days"},
+    ).fetchall()
+
+    matched: list[dict[str, Any]] = []
+    unmatched: list[dict[str, Any]] = []
+
+    for row in rows:
+        haystack = f"{row['title']} {row['description_text']}"
+        # Skip non-US locations
+        if not _is_us_location(row["location"] or ""):
+            continue
+
+        # Title must not be a non-CS role (strategy, ops, finance, etc.)
+        title = row["title"] or ""
+        title_vetoed = bool(PRIME_NEGATIVE_PATTERN.search(title))
+
+        # At least one bucket must match the title itself — description alone isn't enough
+        title_match_tags = [
+            bucket for bucket, pattern in RUBRIC_BUCKETS.items()
+            if pattern.search(title)
+        ]
+        # Description can add extra tags but only if the title already qualifies
+        if title_match_tags and not title_vetoed:
+            haystack = f"{title} {row['description_text']}"
+            match_tags = [
+                bucket for bucket, pattern in RUBRIC_BUCKETS.items()
+                if pattern.search(haystack)
+            ]
+        else:
+            match_tags = []
+
+        payload: dict[str, Any] = {
+            "id": row["id"],
+            "companyId": row["company_id"],
+            "companyName": row["company_name"],
+            "title": title,
+            "location": row["location"] or "",
+            "team": row["team"] or "",
+            "url": row["url"] or "",
+            "firstPublishedAt": row["first_published_at"],
+            "updatedAtRemote": row["updated_at_remote"],
+            "fetchedAt": row["fetched_at"],
+            "matchTags": match_tags,
+            "manualBucket": row["manual_bucket"] or "",
+            "isApplied": bool(row["is_applied"]),
+            "aiSummary": row["ai_summary"] or "",
+        }
+        if match_tags:
+            matched.append(payload)
+        else:
+            unmatched.append(payload)
+
+    return {"matched": matched, "unmatched": unmatched}
 
 
 def company_payload(row: sqlite3.Row) -> dict[str, Any]:

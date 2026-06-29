@@ -8,8 +8,10 @@ from ..core.db import get_db
 from ..services.internships import (
     fetch_company_postings,
     generate_summary_for_posting,
+    list_discover_postings,
     list_postings_for_company,
     list_tracked_companies,
+    scrape_all_companies,
     toggle_posting_applied,
     update_posting_manual_bucket,
 )
@@ -53,6 +55,30 @@ def api_summarize_internship_posting(posting_id: int) -> dict[str, Any]:
         except LookupError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
         return {"company": company, "postings": postings}
+
+
+@router.post("/scrape-all")
+def api_scrape_all_internships() -> dict[str, Any]:
+    with get_db() as conn:
+        return scrape_all_companies(conn)
+
+
+@router.get("/discover")
+def api_discover_internships(days: int = 14) -> dict[str, Any]:
+    with get_db() as conn:
+        return list_discover_postings(conn, days=max(1, min(days, 365)))
+
+
+@router.patch("/postings/{posting_id}/status")
+def api_update_internship_posting_status(posting_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    with get_db() as conn:
+        try:
+            update_posting_manual_bucket(conn, posting_id, str(payload.get("status") or ""))
+        except LookupError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        return {"ok": True}
 
 
 @router.patch("/postings/{posting_id}")

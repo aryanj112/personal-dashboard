@@ -3,8 +3,6 @@ import {
   BriefcaseBusiness,
   Dumbbell,
   FileBadge2,
-  Flower2,
-  Landmark,
   LayoutGrid,
   ListTodo,
   Music4,
@@ -57,18 +55,6 @@ const NAV_ITEMS = [
     icon: FileBadge2,
   },
   {
-    value: "finance",
-    label: "Finance",
-    detail: "Expenses, months, and category mix",
-    icon: Landmark,
-  },
-  {
-    value: "reflection",
-    label: "Reflection",
-    detail: "Clarity, prompts, and future notes",
-    icon: Flower2,
-  },
-  {
     value: "settings",
     label: "Settings",
     detail: "Theme, material, and dashboard controls",
@@ -76,28 +62,21 @@ const NAV_ITEMS = [
   },
 ] as const;
 const EASE = [0.22, 1, 0.36, 1] as const;
-const PRIMARY_NAV_ITEMS = NAV_ITEMS.filter((item) => item.value !== "settings");
+const ALWAYS_HIDDEN = new Set(["internships"]);
+const PRIMARY_NAV_ITEMS = NAV_ITEMS.filter((item) => item.value !== "settings" && !ALWAYS_HIDDEN.has(item.value));
 const SETTINGS_NAV_ITEM = NAV_ITEMS.find((item) => item.value === "settings");
 
 export function Layout({
   route,
   onNavigate,
-  showFinancePage,
-  showReflectionPage,
+  showInternships,
   children,
 }: {
   route: string;
   onNavigate: (route: string) => void;
-  showFinancePage: boolean;
-  showReflectionPage: boolean;
+  showInternships?: boolean;
   children: ReactNode;
 }) {
-  const primaryNavItems = PRIMARY_NAV_ITEMS.filter(
-    (item) =>
-      (item.value !== "reflection" || showReflectionPage) &&
-      (item.value !== "finance" || showFinancePage),
-  );
-
   return (
     <div className="app-shell">
       <div className="ambient ambient-a" />
@@ -108,7 +87,7 @@ export function Layout({
         <div className="topbar-spacer" aria-hidden="true" />
 
         <nav className="topbar-nav" aria-label="Primary navigation">
-          {primaryNavItems.map((item) => {
+          {[...PRIMARY_NAV_ITEMS, ...(showInternships ? NAV_ITEMS.filter(i => i.value === "internships") : [])].map((item) => {
             const Icon = item.icon;
             const active = route === item.value;
             return (

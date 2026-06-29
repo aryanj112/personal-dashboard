@@ -105,7 +105,6 @@ export interface PotentialConnect {
 }
 
 export type NetworkingOptionConfig = {
-  companyOptions: string[];
   roleOptions: string[];
   tagOptions: string[];
   followUpOptions: string[];
@@ -114,34 +113,6 @@ export type NetworkingOptionConfig = {
 };
 
 export const DEFAULT_NETWORKING_OPTIONS: NetworkingOptionConfig = {
-  companyOptions: [
-    "OpenAI",
-    "Anthropic",
-    "Google",
-    "DeepMind",
-    "Meta",
-    "Apple",
-    "Microsoft",
-    "Amazon",
-    "Nvidia",
-    "Tesla",
-    "SpaceX",
-    "Anduril",
-    "Figure",
-    "Boston Dynamics",
-    "Skild AI",
-    "Covariant",
-    "Intrinsic",
-    "Zipline",
-    "Cruise",
-    "Waymo",
-    "Scale AI",
-    "Figma",
-    "Stripe",
-    "Databricks",
-    "Vercel",
-    "Cursor",
-  ],
   roleOptions: Object.values(NetworkingRole),
   tagOptions: [
     "Alumni",

@@ -19,6 +19,7 @@ export type Task = {
   checklist_id?: number | null;
   priority: TaskPriority;
   is_misc: boolean;
+  url?: string;
 };
 
 export type Checklist = {
@@ -234,35 +235,6 @@ export type FinanceResponse = {
   wishlist: FinanceWishlistItem[];
 };
 
-export type ReflectionQuote = {
-  id: number;
-  text: string;
-  author: string;
-};
-
-export type ReflectionPrompt = {
-  id: number;
-  text: string;
-};
-
-export type ReflectionQuestion = {
-  id: number;
-  text: string;
-};
-
-export type ReflectionVideo = {
-  id: number;
-  title: string;
-  url: string;
-};
-
-export type ReflectionResponse = {
-  quotes: ReflectionQuote[];
-  prompts: ReflectionPrompt[];
-  questions: ReflectionQuestion[];
-  videos: ReflectionVideo[];
-};
-
 export type InternshipCompany = {
   id: number;
   name: string;
@@ -276,7 +248,39 @@ export type InternshipCompany = {
   internshipMatches: number;
 };
 
-export type InternshipManualBucket = "" | "prime" | "not_prime" | "hidden";
+export type InternshipManualBucket = "" | "prime" | "not_prime" | "hidden" | "saved" | "dismissed";
+
+export type DiscoverBucket = "swe" | "ml_ai" | "robotics" | "climate" | "data";
+
+export type DiscoverPosting = {
+  id: number;
+  companyId: number;
+  companyName: string;
+  title: string;
+  location: string;
+  team: string;
+  url: string;
+  firstPublishedAt: string | null;
+  updatedAtRemote: string | null;
+  fetchedAt: string;
+  matchTags: DiscoverBucket[];
+  manualBucket: InternshipManualBucket;
+  isApplied: boolean;
+  aiSummary: string;
+};
+
+export type DiscoverResponse = {
+  matched: DiscoverPosting[];
+  unmatched: DiscoverPosting[];
+};
+
+export type ScrapeAllResult = {
+  scraped: { companyId: number; companyName: string; postingCount: number; internshipCount: number }[];
+  errors: { companyId: number; companyName: string; error: string }[];
+  totalCompanies: number;
+  successCount: number;
+  errorCount: number;
+};
 
 export type InternshipPosting = {
   id: number;
@@ -314,4 +318,11 @@ export type Company = {
   careersUrl: string;
   category: string;
   isActive: boolean;
+};
+
+export type QuickLink = {
+  id: number;
+  label: string;
+  url: string;
+  sort_order: number;
 };

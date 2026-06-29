@@ -47,6 +47,10 @@ if ! python3 -c "import fastapi, uvicorn, multipart" >/dev/null 2>&1; then
   exit 1
 fi
 
+# Kill anything already holding the ports
+lsof -ti :8000 | xargs kill -9 2>/dev/null || true
+lsof -ti :5173 | xargs kill -9 2>/dev/null || true
+
 if command -v ollama >/dev/null 2>&1; then
   if ! curl -sf http://localhost:11434 >/dev/null 2>&1; then
     ollama serve >/dev/null 2>&1 &

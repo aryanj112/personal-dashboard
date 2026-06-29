@@ -6,7 +6,9 @@
       "Bash(curl -s \"https://boards-api.greenhouse.io/ *)",
       "Bash(curl -s \"https://api.lever.co/ *)",
       "Bash(sqlite3 /Users/aryanjain/Projects/personal/backend/data/personal.db \"SELECT *)",
-      "Bash(curl -s http://localhost:8000 *)"
+      "Bash(curl -s http://localhost:8000 *)",
+      "Bash(cd /Users/aryanjain/Projects/personal/frontend && npx tsc --noEmit *)",
+      "mcp__computer-use__screenshot"
     ]
   }
 }

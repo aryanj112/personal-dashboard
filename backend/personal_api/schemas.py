@@ -29,6 +29,7 @@ class TaskCreate(BaseModel):
     checklist_id: int | None = None
     priority: str = Field(default="medium", pattern="^(high|medium|low)$")
     is_misc: bool = False
+    url: str | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -39,6 +40,7 @@ class TaskUpdate(BaseModel):
     date: dt_date | None = None
     priority: str | None = Field(default=None, pattern="^(high|medium|low)$")
     is_misc: bool | None = None
+    url: str | None = None
 
 
 class GoalCreate(BaseModel):
@@ -210,28 +212,6 @@ class FinanceWishlistItemUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=160)
     link: str | None = Field(default=None, min_length=1, max_length=500)
     price: float | None = Field(default=None, gt=0, le=1_000_000)
-
-
-class ReflectionQuote(BaseModel):
-    id: int
-    text: str
-    author: str
-
-
-class ReflectionPrompt(BaseModel):
-    id: int
-    text: str
-
-
-class ReflectionQuestion(BaseModel):
-    id: int
-    text: str
-
-
-class ReflectionVideo(BaseModel):
-    id: int
-    title: str
-    url: str
 
 
 class RecurringTaskCreate(BaseModel):

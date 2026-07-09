@@ -20,6 +20,7 @@ from ..services.recurring import (
     delete_recurring_task,
     generate_tasks_for_range,
     list_recurring_tasks,
+    skip_recurring_occurrence,
     update_recurring_task,
 )
 from ..services.tasks import (
@@ -106,7 +107,7 @@ def api_create_task(payload: TaskCreate) -> dict[str, Any]:
             ),
         )
         row = conn.execute(
-            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url FROM tasks WHERE id = ?",
+            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url, recurring_task_id FROM tasks WHERE id = ?",
             (cursor.lastrowid,),
         ).fetchone()
         return serialize_task(row)
@@ -116,7 +117,7 @@ def api_create_task(payload: TaskCreate) -> dict[str, Any]:
 def api_update_task(task_id: int, payload: TaskUpdate) -> dict[str, Any]:
     with get_db() as conn:
         current = conn.execute(
-            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url FROM tasks WHERE id = ?",
+            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url, recurring_task_id FROM tasks WHERE id = ?",
             (task_id,),
         ).fetchone()
         if not current:
@@ -155,7 +156,7 @@ def api_update_task(task_id: int, payload: TaskUpdate) -> dict[str, Any]:
             ),
         )
         row = conn.execute(
-            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url FROM tasks WHERE id = ?",
+            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url, recurring_task_id FROM tasks WHERE id = ?",
             (task_id,),
         ).fetchone()
         return serialize_task(row)
@@ -164,9 +165,17 @@ def api_update_task(task_id: int, payload: TaskUpdate) -> dict[str, Any]:
 @router.delete("/{task_id}")
 def api_delete_task(task_id: int) -> dict[str, bool]:
     with get_db() as conn:
-        deleted = conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
-        if deleted.rowcount == 0:
+        row = conn.execute(
+            "SELECT recurring_task_id, task_date FROM tasks WHERE id = ?",
+            (task_id,),
+        ).fetchone()
+        if row is None:
             raise HTTPException(status_code=404, detail="Task not found.")
+        # A recurring occurrence would be regenerated on the next week load, so
+        # record a skip for this date to make the deletion stick.
+        if row["recurring_task_id"] and row["task_date"]:
+            skip_recurring_occurrence(conn, row["recurring_task_id"], row["task_date"])
+        conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
         return {"ok": True}
 
 
@@ -297,7 +306,7 @@ def api_create_task_from_checklist(checklist_id: int, payload: ChecklistProgress
 
         existing = conn.execute(
             """
-            SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url
+            SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url, recurring_task_id
             FROM tasks
             WHERE checklist_id = ? AND task_date = ?
             ORDER BY id DESC
@@ -320,7 +329,7 @@ def api_create_task_from_checklist(checklist_id: int, payload: ChecklistProgress
             (tracker["text"], payload.date.isoformat(), next_sort, checklist_id),
         )
         row = conn.execute(
-            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url FROM tasks WHERE id = ?",
+            "SELECT id, text, task_date, completed, notes, sort_order, checklist_id, priority, is_misc, url, recurring_task_id FROM tasks WHERE id = ?",
             (cursor.lastrowid,),
         ).fetchone()
         return serialize_task(row)

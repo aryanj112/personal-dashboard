@@ -426,6 +426,7 @@ function DayModal({
   const [editDate, setEditDate] = useState(date);
   const [editIsMisc, setEditIsMisc] = useState(false);
   const [editUrl, setEditUrl] = useState("");
+  const [recurringDelete, setRecurringDelete] = useState<Task | null>(null);
   const parsed = new Date(`${date}T12:00:00`);
   const dayName = parsed.toLocaleDateString(undefined, { weekday: "long" });
   const dateLabel = parsed.toLocaleDateString(undefined, { month: "long", day: "numeric" });
@@ -454,8 +455,33 @@ function DayModal({
     await onRefresh();
   }
 
-  async function del(task: Task) {
+  async function performDelete(task: Task) {
     await api.deleteTask(task.id);
+    if (editingTaskId === task.id) {
+      setEditingTaskId(null);
+    }
+    await onRefresh();
+  }
+
+  // Entry point for every delete button. Recurring tasks first ask whether to
+  // remove just this occurrence or the whole series; plain tasks delete directly.
+  function del(task: Task) {
+    if (task.recurring_task_id) {
+      setRecurringDelete(task);
+    } else {
+      void performDelete(task);
+    }
+  }
+
+  async function deleteOccurrence(task: Task) {
+    setRecurringDelete(null);
+    await performDelete(task);
+  }
+
+  async function deleteSeries(task: Task) {
+    setRecurringDelete(null);
+    if (!task.recurring_task_id) return;
+    await api.deleteRecurringTask(task.recurring_task_id);
     if (editingTaskId === task.id) {
       setEditingTaskId(null);
     }
@@ -640,6 +666,11 @@ function DayModal({
                       {PRIORITY_LABELS[task.priority]}
                     </span>
                     {task._overdue && <span className="day-modal-overdue-tag">overdue</span>}
+                    {task.recurring_task_id && (
+                      <span className="day-modal-recurring-tag" title="Recurring task">
+                        <Repeat size={12} />
+                      </span>
+                    )}
                     <button
                       className="icon-button day-modal-menu-button"
                       onClick={() => openEdit(task)}
@@ -649,7 +680,7 @@ function DayModal({
                     </button>
                     <button
                       className="icon-button danger"
-                      onClick={() => void del(task)}
+                      onClick={() => del(task)}
                       aria-label={`Delete ${task.text}`}
                     >
                       <Trash2 size={14} />
@@ -882,6 +913,41 @@ function DayModal({
           )}
 
         </div>
+
+        {recurringDelete && (
+          <div
+            className="recurring-confirm-backdrop"
+            onClick={() => setRecurringDelete(null)}
+          >
+            <div className="recurring-confirm" onClick={(e) => e.stopPropagation()}>
+              <div className="recurring-confirm-icon"><Repeat size={18} /></div>
+              <p className="recurring-confirm-title">Delete recurring task</p>
+              <p className="recurring-confirm-text">
+                “{recurringDelete.text}” repeats. Delete just this day, or every occurrence?
+              </p>
+              <div className="recurring-confirm-actions">
+                <button
+                  className="secondary-button"
+                  onClick={() => void deleteOccurrence(recurringDelete)}
+                >
+                  Just this one
+                </button>
+                <button
+                  className="recurring-confirm-danger"
+                  onClick={() => void deleteSeries(recurringDelete)}
+                >
+                  Delete all
+                </button>
+              </div>
+              <button
+                className="text-button recurring-confirm-cancel"
+                onClick={() => setRecurringDelete(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </motion.div>
     </div>,
     document.body,
@@ -1879,7 +1945,7 @@ export function TodayPage({
             tasks={dayData?.tasks ?? []}
             overdueTasks={overdueForDay}
             onClose={() => setExpandedDayDate(null)}
-            onRefresh={() => fetchWeek(weekStart)}
+            onRefresh={refreshAll}
             onAddTask={() => { setAddModalDate(expandedDayDate); setExpandedDayDate(null); }}
           />
         );

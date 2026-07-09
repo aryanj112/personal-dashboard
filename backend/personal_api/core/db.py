@@ -584,6 +584,16 @@ def create_schema() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS recurring_task_skips (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recurring_task_id INTEGER NOT NULL,
+                skip_date TEXT NOT NULL,
+                UNIQUE(recurring_task_id, skip_date)
+            )
+            """
+        )
         recurring_columns = {
             row["name"] for row in conn.execute("PRAGMA table_info(recurring_tasks)").fetchall()
         }

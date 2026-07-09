@@ -17,6 +17,7 @@ export type Task = {
   notes?: string | null;
   sort_order: number;
   checklist_id?: number | null;
+  recurring_task_id?: number | null;
   priority: TaskPriority;
   is_misc: boolean;
   url?: string;

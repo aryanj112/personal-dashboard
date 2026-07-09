@@ -1,36 +1,24 @@
 # Styles
 
-There are two stylesheet systems in this folder.
-
 ## Active Stylesheet
 
-- `app-military.css`
+- `app.css`
 
-`main.tsx` currently imports this file, so it is the live design system.
+`main.tsx` imports this file — it is the single, live design system.
 
 Characteristics:
 
 - tactical / military-inspired theme
 - light and dark variants
 - CSS custom properties for colors, spacing, chart palettes, and surfaces
-- comments explicitly state that industrial mood support has been removed
 
-## Legacy Stylesheet
+## Quirk
 
-- `app.css`
-
-This is not currently imported, but it remains useful as:
-
-- a fallback visual reference
-- a record of earlier theming decisions
-- the source of the older `data-mood` styling behavior
-
-## Important Quirk
-
-`App.tsx` still stores `document.documentElement.dataset.mood`, but `app-military.css` no longer consumes it. Theme changes are live; mood changes are currently vestigial under the active stylesheet.
+`App.tsx` still stores `document.documentElement.dataset.mood`, but `app.css`
+does not consume it. Theme changes are live; mood changes are currently
+vestigial.
 
 ## Editing Guidance
 
-- Prefer editing `app-military.css` for live UI changes.
+- Edit `app.css` for all UI changes.
 - Reuse existing CSS variables before introducing new hard-coded colors.
-- If you intentionally revive mood-based styling, make sure the app state and stylesheet behavior match again.

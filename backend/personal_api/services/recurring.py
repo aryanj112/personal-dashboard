@@ -88,13 +88,24 @@ def update_recurring_task(
 
 
 def delete_recurring_task(conn: sqlite3.Connection, task_id: int) -> bool:
-    # Detach any generated tasks so they become standalone
-    conn.execute(
-        "UPDATE tasks SET recurring_task_id = NULL WHERE recurring_task_id = ?",
-        (task_id,),
-    )
+    # Remove every generated occurrence (past and future) plus the rule itself.
+    conn.execute("DELETE FROM tasks WHERE recurring_task_id = ?", (task_id,))
+    conn.execute("DELETE FROM recurring_task_skips WHERE recurring_task_id = ?", (task_id,))
     deleted = conn.execute("DELETE FROM recurring_tasks WHERE id = ?", (task_id,))
     return deleted.rowcount > 0
+
+
+def skip_recurring_occurrence(
+    conn: sqlite3.Connection, recurring_task_id: int, skip_date: str
+) -> None:
+    """Record that a single occurrence was deleted so it is not regenerated."""
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO recurring_task_skips(recurring_task_id, skip_date)
+        VALUES(?, ?)
+        """,
+        (recurring_task_id, skip_date),
+    )
 
 
 def generate_tasks_for_range(
@@ -139,6 +150,14 @@ def generate_tasks_for_range(
                 (rec["id"], date_str),
             ).fetchone()
             if exists:
+                continue
+
+            # Skip if this occurrence was explicitly deleted ("just this one")
+            skipped = conn.execute(
+                "SELECT 1 FROM recurring_task_skips WHERE recurring_task_id = ? AND skip_date = ?",
+                (rec["id"], date_str),
+            ).fetchone()
+            if skipped:
                 continue
 
             next_sort = conn.execute(

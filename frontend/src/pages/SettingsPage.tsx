@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Copy,
   Dumbbell,
+  FileBadge2,
   GripVertical,
   Guitar,
   LayoutGrid,
@@ -66,6 +67,7 @@ export function SettingsPage({
     show_open_today: boolean;
     show_export_today: boolean;
     show_notes: boolean;
+    show_resume: boolean;
   };
   networkingOptions: NetworkingOptionConfig;
   onThemeChange: (theme: "light" | "dark") => void;
@@ -76,6 +78,7 @@ export function SettingsPage({
     show_open_today: boolean;
     show_export_today: boolean;
     show_notes: boolean;
+    show_resume: boolean;
   }) => void;
   onNetworkingOptionsChange: (options: NetworkingOptionConfig) => void;
   onRefresh: () => Promise<void>;
@@ -321,6 +324,23 @@ export function SettingsPage({
                   type="checkbox"
                   checked={dashboardPreferences.show_notes}
                   onChange={(event) => updatePreference("show_notes", event.target.checked)}
+                />
+              </label>
+
+              <label className="settings-toggle-row">
+                <span className="settings-toggle-copy">
+                  <span className="settings-tile-icon">
+                    <FileBadge2 size={18} />
+                  </span>
+                  <span>
+                    <strong>Show resume</strong>
+                    <small>Adds the Resume page to the navigation bar.</small>
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={dashboardPreferences.show_resume}
+                  onChange={(event) => updatePreference("show_resume", event.target.checked)}
                 />
               </label>
 

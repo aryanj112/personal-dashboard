@@ -35,6 +35,7 @@ type DashboardPreferences = {
   show_open_today: boolean;
   show_export_today: boolean;
   show_notes: boolean;
+  show_resume: boolean;
 };
 
 const DEFAULT_ROUTE: Route = "dashboard";
@@ -45,6 +46,7 @@ const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
   show_open_today: true,
   show_export_today: true,
   show_notes: false,
+  show_resume: false,
 };
 const ROUTE_STORAGE_KEY = "personal-route";
 const THEME_STORAGE_KEY = "personal-theme";
@@ -136,12 +138,19 @@ export default function App() {
     });
   }
 
+  // Redirect away from resume if it gets hidden
+  useEffect(() => {
+    if (route === "resume" && !dashboardPreferences.show_resume) {
+      navigate("dashboard");
+    }
+  }, [dashboardPreferences.show_resume, route]);
+
   function openTasksForToday() {
     setTasksDate(getTodayString());
     navigate("today");
   }
 
-  const content = route === "resume" ? (
+  const content = route === "resume" && dashboardPreferences.show_resume ? (
     <ResumePage />
   ) : loading ? (
     <div className="empty-state shell-state">
@@ -201,7 +210,11 @@ export default function App() {
   ) : null;
 
   return (
-    <Layout route={route} onNavigate={navigate}>
+    <Layout
+      route={route}
+      onNavigate={navigate}
+      showResume={dashboardPreferences.show_resume}
+    >
       {content}
     </Layout>
   );

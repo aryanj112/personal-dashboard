@@ -61,12 +61,17 @@ const SETTINGS_NAV_ITEM = NAV_ITEMS.find((item) => item.value === "settings");
 export function Layout({
   route,
   onNavigate,
+  showResume,
   children,
 }: {
   route: string;
   onNavigate: (route: string) => void;
+  showResume?: boolean;
   children: ReactNode;
 }) {
+  const navItems = PRIMARY_NAV_ITEMS.filter(
+    (item) => item.value !== "resume" || showResume,
+  );
   return (
     <div className="app-shell">
       <div className="ambient ambient-a" />
@@ -77,7 +82,7 @@ export function Layout({
         <div className="topbar-spacer" aria-hidden="true" />
 
         <nav className="topbar-nav" aria-label="Primary navigation">
-          {PRIMARY_NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = route === item.value;
             return (

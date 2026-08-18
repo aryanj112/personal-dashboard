@@ -23,6 +23,9 @@ cleanup() {
   if [[ -n "${OLLAMA_PID}" ]] && kill -0 "${OLLAMA_PID}" 2>/dev/null; then
     kill "${OLLAMA_PID}" 2>/dev/null || true
   fi
+
+  # Bring the background backend service back up now that dev mode is done
+  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.aryanjain.personal-api.plist" 2>/dev/null || true
 }
 
 trap cleanup EXIT INT TERM
@@ -47,7 +50,11 @@ if ! python3 -c "import fastapi, uvicorn, multipart" >/dev/null 2>&1; then
   exit 1
 fi
 
-# Kill anything already holding the ports
+# Stop the background launchd backend service first — it has KeepAlive set,
+# so just killing the port would race it and it'd reclaim 8000 instantly.
+launchctl bootout "gui/$(id -u)/com.aryanjain.personal-api" 2>/dev/null || true
+
+# Kill anything still holding the ports
 lsof -ti :8000 | xargs kill -9 2>/dev/null || true
 lsof -ti :5173 | xargs kill -9 2>/dev/null || true
 

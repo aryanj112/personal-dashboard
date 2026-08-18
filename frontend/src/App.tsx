@@ -14,7 +14,6 @@ import type {
 } from "./lib/types";
 import { DashboardPage } from "./pages/DashboardPage";
 import { GuitarPage } from "./pages/GuitarPage";
-import { InternshipsPage } from "./pages/InternshipsPage";
 import { ModulePage } from "./pages/ModulePage";
 import { NetworkingPage } from "./pages/NetworkingPage";
 import { ResumePage } from "./pages/ResumePage";
@@ -27,7 +26,6 @@ type Route =
   | "guitar"
   | "workouts"
   | "networking"
-  | "internships"
   | "resume"
   | "settings";
 type ColorTheme = "light" | "dark";
@@ -37,8 +35,6 @@ type DashboardPreferences = {
   show_open_today: boolean;
   show_export_today: boolean;
   show_notes: boolean;
-  show_og_internships: boolean;
-  show_internships: boolean;
 };
 
 const DEFAULT_ROUTE: Route = "dashboard";
@@ -49,8 +45,6 @@ const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
   show_open_today: true,
   show_export_today: true,
   show_notes: false,
-  show_og_internships: false,
-  show_internships: false,
 };
 const ROUTE_STORAGE_KEY = "personal-route";
 const THEME_STORAGE_KEY = "personal-theme";
@@ -142,21 +136,12 @@ export default function App() {
     });
   }
 
-  // Redirect away from internships if it gets hidden
-  useEffect(() => {
-    if (route === "internships" && !dashboardPreferences.show_internships) {
-      navigate("dashboard");
-    }
-  }, [dashboardPreferences.show_internships, route]);
-
   function openTasksForToday() {
     setTasksDate(getTodayString());
     navigate("today");
   }
 
-  const content = route === "internships" ? (
-    <InternshipsPage />
-  ) : route === "resume" ? (
+  const content = route === "resume" ? (
     <ResumePage />
   ) : loading ? (
     <div className="empty-state shell-state">
@@ -216,11 +201,7 @@ export default function App() {
   ) : null;
 
   return (
-    <Layout
-      route={route}
-      onNavigate={navigate}
-      showInternships={dashboardPreferences.show_internships}
-    >
+    <Layout route={route} onNavigate={navigate}>
       {content}
     </Layout>
   );

@@ -10,7 +10,6 @@ Each router file defines HTTP endpoints for one domain and usually delegates mos
 - `modules.py`: guitar and workouts endpoints
 - `dashboard.py`: overview analytics payload
 - `networking.py`: contacts and potential connects
-- `internships.py`: tracked internship companies, postings, refreshes, summaries
 - `companies.py`: tracked companies CRUD and cowork-text export
 - `notes.py`: singleton notes document
 - `finance.py`: finance categories, expenses, subscriptions, wishlist

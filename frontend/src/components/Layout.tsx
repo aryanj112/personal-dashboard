@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BriefcaseBusiness,
   Dumbbell,
   FileBadge2,
   LayoutGrid,
@@ -43,12 +42,6 @@ const NAV_ITEMS = [
     icon: Network,
   },
   {
-    value: "internships",
-    label: "Internships",
-    detail: "Live boards and early-career roles",
-    icon: BriefcaseBusiness,
-  },
-  {
     value: "resume",
     label: "Resume",
     detail: "Tailor LaTeX source and export PDFs",
@@ -62,19 +55,16 @@ const NAV_ITEMS = [
   },
 ] as const;
 const EASE = [0.22, 1, 0.36, 1] as const;
-const ALWAYS_HIDDEN = new Set(["internships"]);
-const PRIMARY_NAV_ITEMS = NAV_ITEMS.filter((item) => item.value !== "settings" && !ALWAYS_HIDDEN.has(item.value));
+const PRIMARY_NAV_ITEMS = NAV_ITEMS.filter((item) => item.value !== "settings");
 const SETTINGS_NAV_ITEM = NAV_ITEMS.find((item) => item.value === "settings");
 
 export function Layout({
   route,
   onNavigate,
-  showInternships,
   children,
 }: {
   route: string;
   onNavigate: (route: string) => void;
-  showInternships?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -87,7 +77,7 @@ export function Layout({
         <div className="topbar-spacer" aria-hidden="true" />
 
         <nav className="topbar-nav" aria-label="Primary navigation">
-          {[...PRIMARY_NAV_ITEMS, ...(showInternships ? NAV_ITEMS.filter(i => i.value === "internships") : [])].map((item) => {
+          {PRIMARY_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = route === item.value;
             return (

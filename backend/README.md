@@ -51,7 +51,6 @@ backend/
 - Session-backed habits (`Guitar`, `Exercise`) are derived from session tables.
 - Company mutations regenerate `backend/data/companies_cowork.txt`.
 - Resume compilation depends on a local `pdflatex` binary.
-- Internship summaries depend on a local Ollama server when available, but failures are non-fatal.
 
 ## Local Guides
 

@@ -30,11 +30,10 @@ Routers are registered in `main.py` in this order:
 4. `modules`
 5. `dashboard`
 6. `networking`
-7. `internships`
-8. `companies`
-9. `notes`
+7. `companies`
+8. `notes`
+9. `links`
 10. `finance`
-11. `reflection`
-12. `resume`
+11. `resume`
 
 The registration order is not usually important, but this is the quickest place to check whether a route file is actually mounted.

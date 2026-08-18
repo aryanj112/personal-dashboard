@@ -98,8 +98,7 @@ DEFAULT_FINANCE_CATEGORIES = [
 # To add a new company: append to the END of this list.
 # The frontend appends unknown companies to the bottom of the user's saved order,
 # so adding here won't reset anyone's existing organization or favorites.
-# source_type = "none" means no ATS scraper — company appears in the unified company
-# list for networking/cowork reference but is hidden from the internships sidebar.
+# source_type = "none" means no ATS scraper is configured for this company.
 DEFAULT_TRACKED_COMPANIES = [
     # (name, source_type, source_key, careers_url, category)
 
@@ -215,22 +214,6 @@ def _merge_company_alias(conn: sqlite3.Connection, legacy_name: str, canonical_n
     canonical_id = canonical_row["id"] if canonical_row else None
 
     if legacy_id and canonical_id and legacy_id != canonical_id:
-        conn.execute(
-            """
-            DELETE FROM internship_postings
-            WHERE company_id = ?
-              AND external_id IN (
-                SELECT external_id
-                FROM internship_postings
-                WHERE company_id = ?
-              )
-            """,
-            (legacy_id, canonical_id),
-        )
-        conn.execute(
-            "UPDATE internship_postings SET company_id = ? WHERE company_id = ?",
-            (canonical_id, legacy_id),
-        )
         conn.execute("DELETE FROM tracked_companies WHERE id = ?", (legacy_id,))
     elif legacy_id and not canonical_id:
         conn.execute(
@@ -498,35 +481,11 @@ def create_schema() -> None:
                 source_key TEXT NOT NULL,
                 careers_url TEXT NOT NULL DEFAULT '',
                 category TEXT NOT NULL DEFAULT '',
-                role_focus TEXT NOT NULL DEFAULT 'internships',
                 is_active INTEGER NOT NULL DEFAULT 1,
                 last_fetched_at TEXT,
                 last_fetch_error TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS internship_postings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                company_id INTEGER NOT NULL REFERENCES tracked_companies(id) ON DELETE CASCADE,
-                external_id TEXT NOT NULL,
-                title TEXT NOT NULL,
-                location TEXT NOT NULL DEFAULT '',
-                team TEXT NOT NULL DEFAULT '',
-                employment_type TEXT NOT NULL DEFAULT '',
-                url TEXT NOT NULL DEFAULT '',
-                description_text TEXT NOT NULL DEFAULT '',
-                first_published_at TEXT,
-                updated_at_remote TEXT,
-                is_active INTEGER NOT NULL DEFAULT 1,
-                is_internship INTEGER NOT NULL DEFAULT 0,
-                manual_bucket TEXT NOT NULL DEFAULT '',
-                ai_summary TEXT NOT NULL DEFAULT '',
-                is_applied INTEGER NOT NULL DEFAULT 0,
-                fetched_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(company_id, external_id)
             );
 
             CREATE TABLE IF NOT EXISTS app_notes (
@@ -609,21 +568,15 @@ def create_schema() -> None:
                 """
             )
 
-        internship_columns = {
-            row["name"] for row in conn.execute("PRAGMA table_info(internship_postings)").fetchall()
+        # The internship finder feature was removed; drop its table and the
+        # now-unused tracked_companies.role_focus column for existing databases.
+        conn.execute("DROP TABLE IF EXISTS internship_postings")
+        company_columns_pre = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(tracked_companies)").fetchall()
         }
-        if "manual_bucket" not in internship_columns:
-            conn.execute(
-                "ALTER TABLE internship_postings ADD COLUMN manual_bucket TEXT NOT NULL DEFAULT ''"
-            )
-        if "ai_summary" not in internship_columns:
-            conn.execute(
-                "ALTER TABLE internship_postings ADD COLUMN ai_summary TEXT NOT NULL DEFAULT ''"
-            )
-        if "is_applied" not in internship_columns:
-            conn.execute(
-                "ALTER TABLE internship_postings ADD COLUMN is_applied INTEGER NOT NULL DEFAULT 0"
-            )
+        if "role_focus" in company_columns_pre:
+            conn.execute("ALTER TABLE tracked_companies DROP COLUMN role_focus")
 
         company_columns = {
             row["name"]
@@ -837,7 +790,6 @@ def create_schema() -> None:
                     source_key = excluded.source_key,
                     careers_url = excluded.careers_url,
                     category = excluded.category,
-                    role_focus = 'internships',
                     is_active = 1,
                     updated_at = CURRENT_TIMESTAMP
                 """,

@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import {
-  BriefcaseBusiness,
   Building2,
   Check,
   ChevronDown,
@@ -67,8 +66,6 @@ export function SettingsPage({
     show_open_today: boolean;
     show_export_today: boolean;
     show_notes: boolean;
-    show_og_internships: boolean;
-    show_internships: boolean;
   };
   networkingOptions: NetworkingOptionConfig;
   onThemeChange: (theme: "light" | "dark") => void;
@@ -79,8 +76,6 @@ export function SettingsPage({
     show_open_today: boolean;
     show_export_today: boolean;
     show_notes: boolean;
-    show_og_internships: boolean;
-    show_internships: boolean;
   }) => void;
   onNetworkingOptionsChange: (options: NetworkingOptionConfig) => void;
   onRefresh: () => Promise<void>;
@@ -326,21 +321,6 @@ export function SettingsPage({
                   type="checkbox"
                   checked={dashboardPreferences.show_notes}
                   onChange={(event) => updatePreference("show_notes", event.target.checked)}
-                />
-              </label>
-
-              <label className="settings-toggle-row">
-                <span className="settings-toggle-label">
-                  <span className="settings-tile-icon"><BriefcaseBusiness size={16} /></span>
-                  <span>
-                    <strong>Show internships</strong>
-                    <small>Adds the Internships page to the navigation bar.</small>
-                  </span>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={dashboardPreferences.show_internships}
-                  onChange={(event) => updatePreference("show_internships", event.target.checked)}
                 />
               </label>
 

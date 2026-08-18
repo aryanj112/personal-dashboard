@@ -38,12 +38,6 @@ Each file in this folder is a route-level screen rendered by `frontend/src/App.t
 - edits interactions and follow-up metadata
 - handles copy/open workflows for outreach messages
 
-### `InternshipsPage.tsx`
-
-- loads tracked companies and one-company posting detail
-- persists favorites and company ordering in localStorage
-- supports fetch refresh, manual bucket changes, applied toggles, and AI summaries
-
 ### `FinancePage.tsx`
 
 - month-scoped expense view

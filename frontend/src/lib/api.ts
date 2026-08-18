@@ -1,7 +1,6 @@
 import type {
   Company,
   DashboardResponse,
-  DiscoverResponse,
   FinanceCategory,
   FinanceExpense,
   FinanceResponse,
@@ -11,14 +10,10 @@ import type {
   GuitarMaterial,
   QuickLink,
   GuitarResponse,
-  InternshipCompany,
-  InternshipCompanyDetailResponse,
-  InternshipManualBucket,
   GuitarSong,
   GuitarSongFile,
   RecurringTask,
   ModuleResponse,
-  ScrapeAllResult,
   Session,
   Task,
   TaskPriority,
@@ -267,46 +262,6 @@ export const api = {
   },
   getPotentialConnects() {
     return request<{ potentialConnects: PotentialConnect[] }>("/api/networking/potential-connects");
-  },
-  getInternshipCompanies() {
-    return request<{ companies: InternshipCompany[] }>("/api/internships/companies");
-  },
-  getInternshipPostings(companyId: number) {
-    return request<InternshipCompanyDetailResponse>(`/api/internships/postings?company_id=${companyId}`);
-  },
-  fetchInternshipPostings(companyId: number) {
-    return request<InternshipCompanyDetailResponse>(`/api/internships/fetch/${companyId}`, {
-      method: "POST",
-    });
-  },
-  updateInternshipPostingBucket(postingId: number, manualBucket: InternshipManualBucket) {
-    return request<InternshipCompanyDetailResponse>(`/api/internships/postings/${postingId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ manual_bucket: manualBucket }),
-    });
-  },
-  toggleInternshipPostingApplied(postingId: number) {
-    return request<InternshipCompanyDetailResponse>(`/api/internships/postings/${postingId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ toggle_applied: true }),
-    });
-  },
-  summarizeInternshipPosting(postingId: number) {
-    return request<InternshipCompanyDetailResponse>(`/api/internships/postings/${postingId}/summarize`, {
-      method: "POST",
-    });
-  },
-  scrapeAllInternships() {
-    return request<ScrapeAllResult>("/api/internships/scrape-all", { method: "POST" });
-  },
-  discoverInternships(days = 14) {
-    return request<DiscoverResponse>(`/api/internships/discover?days=${days}`);
-  },
-  updateInternshipPostingStatus(postingId: number, status: InternshipManualBucket) {
-    return request<{ ok: boolean }>(`/api/internships/postings/${postingId}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
   },
   async compileResumePdf(name: string, source: string, signal?: AbortSignal) {
     const response = await fetch(`${API_BASE}/api/resume/compile`, {

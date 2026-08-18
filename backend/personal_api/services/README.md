@@ -40,14 +40,6 @@
 - potential-connect queue updates
 - sync logic between contacts and outreach queue rows
 
-### `internships.py`
-
-- tracked company listing
-- Greenhouse/Lever/Workday/Tesla fetch normalization
-- posting upserts and refresh behavior
-- automatic stage-one and prime-role heuristics
-- optional AI summary generation
-
 ### `tesla_scraper.py`
 
 - Tesla-specific scrape flow using Camoufox
@@ -73,10 +65,6 @@
 
 - compiles LaTeX into PDF bytes using a local `pdflatex` binary
 
-### `ollama.py`
-
-- best-effort internship summary generation through local Ollama
-
 ## Patterns Worth Preserving
 
 - keep SQL close to the domain logic instead of hiding it behind generic abstractions
@@ -86,7 +74,6 @@
 
 ## High-Risk Areas
 
-- `internships.py`: lots of normalization heuristics and source-specific behavior
 - `networking.py`: two partially synchronized table families
 - `modules.py`: shared guitar/workout logic plus file metadata
 - `finance.py`: mixes stored expenses with derived monthly subscription occurrences

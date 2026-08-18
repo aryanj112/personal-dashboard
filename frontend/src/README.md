@@ -28,7 +28,7 @@ It also decides which pages are visible:
 
 - finance and reflection are gated by dashboard preferences
 - settings is always available
-- internships and resume are independent pages with their own data loading
+- resume is an independent page with its own data loading
 
 ## Important Quirks
 

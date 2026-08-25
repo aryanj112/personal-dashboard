@@ -35,18 +35,33 @@ if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
   exit 1
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 is required but was not found."
-  exit 1
-fi
-
 if ! command -v npm >/dev/null 2>&1; then
   echo "npm is required but was not found."
   exit 1
 fi
 
-if ! python3 -c "import fastapi, uvicorn, multipart" >/dev/null 2>&1; then
-  echo "Backend dependencies are missing. Run: cd \"$BACKEND_DIR\" && pip3 install -r requirements.txt"
+# Find an interpreter that actually has the backend deps. Plain `python3` may
+# resolve to a different install than the one they were installed into (e.g.
+# conda/miniforge shadowing pyenv on PATH), so probe candidates in order and
+# prefer the interpreter the launchd service uses.
+PYTHON_BIN=""
+for candidate in \
+  "$HOME/.pyenv/versions/3.12.10/bin/python3.12" \
+  "$(command -v python3 || true)" \
+  "$(command -v python3.12 || true)"
+do
+  if [[ -n "$candidate" ]] && "$candidate" -c "import fastapi, uvicorn, multipart" >/dev/null 2>&1; then
+    PYTHON_BIN="$candidate"
+    break
+  fi
+done
+
+if [[ -z "$PYTHON_BIN" ]]; then
+  echo "Backend dependencies are missing from every Python found."
+  echo "Install them with: cd \"$BACKEND_DIR\" && pip3 install -r requirements.txt"
+  echo "Interpreters checked:"
+  echo "  $HOME/.pyenv/versions/3.12.10/bin/python3.12"
+  echo "  $(command -v python3 || echo 'python3 not on PATH')"
   exit 1
 fi
 
@@ -72,8 +87,8 @@ if [[ "${1:-}" != "--no-reload-backend" ]]; then
 fi
 
 echo ""
-echo "Starting backend on http://127.0.0.1:8000"
-(cd "$BACKEND_DIR" && python3 -m uvicorn "${BACKEND_ARGS[@]}") &
+echo "Starting backend on http://127.0.0.1:8000 (using $PYTHON_BIN)"
+(cd "$BACKEND_DIR" && "$PYTHON_BIN" -m uvicorn "${BACKEND_ARGS[@]}") &
 BACKEND_PID=$!
 
 echo "Starting frontend on http://127.0.0.1:5173"

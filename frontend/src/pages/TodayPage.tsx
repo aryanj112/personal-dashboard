@@ -51,6 +51,10 @@ const PRIORITY_LABELS: Record<TaskPriority, string> = {
   low: "Low",
 };
 
+// Priority a task falls back to when none is chosen, and when a dated task is
+// moved to misc (an "eventually" item keeps no urgency from its old date).
+const DEFAULT_TASK_PRIORITY: TaskPriority = "medium";
+
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function getTodayString() {
@@ -150,7 +154,7 @@ function AddTaskModal({
 }) {
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
-  const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [priority, setPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
   const [dateMode, setDateMode] = useState<DateMode>(() => {
     if (defaultRecurring) return "recurring";
     if (defaultMisc) return "misc";
@@ -422,7 +426,7 @@ function DayModal({
 }) {
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
-  const [editPriority, setEditPriority] = useState<TaskPriority>("medium");
+  const [editPriority, setEditPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
   const [editDate, setEditDate] = useState(date);
   const [editIsMisc, setEditIsMisc] = useState(false);
   const [editUrl, setEditUrl] = useState("");
@@ -488,6 +492,19 @@ function DayModal({
     await onRefresh();
   }
 
+  // Drop the task's date and park it in misc. The backend clears task_date on
+  // is_misc, and the priority resets since the old date's urgency no longer applies.
+  async function moveToMisc(task: Task) {
+    await api.updateTask(task.id, {
+      is_misc: true,
+      priority: DEFAULT_TASK_PRIORITY,
+    });
+    if (editingTaskId === task.id) {
+      setEditingTaskId(null);
+    }
+    await onRefresh();
+  }
+
   function openEdit(task: Task) {
     setEditingTaskId(task.id);
     setEditText(task.text);
@@ -500,7 +517,7 @@ function DayModal({
   function cancelEdit() {
     setEditingTaskId(null);
     setEditText("");
-    setEditPriority("medium");
+    setEditPriority(DEFAULT_TASK_PRIORITY);
     setEditDate(date);
     setEditIsMisc(false);
     setEditUrl("");
@@ -671,6 +688,14 @@ function DayModal({
                         <Repeat size={12} />
                       </span>
                     )}
+                    <button
+                      className="icon-button"
+                      onClick={() => void moveToMisc(task)}
+                      aria-label={`Move ${task.text} to misc`}
+                      title="Move to misc"
+                    >
+                      <Inbox size={14} />
+                    </button>
                     <button
                       className="icon-button day-modal-menu-button"
                       onClick={() => openEdit(task)}
@@ -898,6 +923,14 @@ function DayModal({
                         <span className={`priority-badge priority-${task.priority}`}>
                           {PRIORITY_LABELS[task.priority]}
                         </span>
+                        <button
+                          className="icon-button"
+                          onClick={() => void moveToMisc(task)}
+                          aria-label={`Move ${task.text} to misc`}
+                          title="Move to misc"
+                        >
+                          <Inbox size={14} />
+                        </button>
                         <button className="icon-button day-modal-menu-button" onClick={() => openEdit(task)} aria-label={`Edit ${task.text}`}>
                           <MoreHorizontal size={15} />
                         </button>
@@ -1119,7 +1152,7 @@ function MiscPanel({
 }) {
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
-  const [editPriority, setEditPriority] = useState<TaskPriority>("medium");
+  const [editPriority, setEditPriority] = useState<TaskPriority>(DEFAULT_TASK_PRIORITY);
   const [editUrl, setEditUrl] = useState("");
   const dateInputsRef = useRef<Map<number, HTMLInputElement>>(new Map());
 
@@ -1146,7 +1179,7 @@ function MiscPanel({
   function cancelEdit() {
     setEditingTaskId(null);
     setEditText("");
-    setEditPriority("medium");
+    setEditPriority(DEFAULT_TASK_PRIORITY);
     setEditUrl("");
   }
 

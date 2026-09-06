@@ -29,6 +29,7 @@ import {
   GuitarSessionDetails,
   SESSION_BACKED_HABIT_NAMES,
 } from "../components/HabitSessionDetails";
+import { WeekTimeGrid } from "../components/WeekTimeGrid";
 import { api } from "../lib/api";
 import type {
   ModuleResponse,
@@ -351,57 +352,6 @@ function AddTaskModal({
   );
 }
 
-// ─── Calendar Task Pill ──────────────────────────────────────────────────────
-
-function TaskPill({
-  task,
-  compact,
-  onToggle,
-  onDelete,
-}: {
-  task: Task;
-  compact?: boolean;
-  onToggle: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className={`task-pill priority-${task.priority} ${task.completed ? "done" : ""}`}>
-      <button
-        className={`pill-check ${task.completed ? "checked" : ""}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onToggle();
-        }}
-        aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
-      />
-      <span className="pill-text">{task.text}</span>
-      {task.url && (
-        <a
-          href={task.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="task-link-badge"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ExternalLink size={10} />
-        </a>
-      )}
-      {!compact && (
-        <button
-          className="pill-delete"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDelete();
-          }}
-          aria-label="Delete"
-        >
-          <Trash2 size={11} />
-        </button>
-      )}
-    </div>
-  );
-}
-
 // ─── Day Expand Modal ────────────────────────────────────────────────────────
 
 const DAY_LABEL_FULL: Record<string, string> = {
@@ -626,13 +576,6 @@ function DayModal({
                       ) : (
                         <span className="day-modal-edit-state">In misc</span>
                       )}
-                      <button
-                        type="button"
-                        className="text-button day-modal-misc-link"
-                        onClick={() => setEditIsMisc((current) => !current)}
-                      >
-                        {editIsMisc ? "Keep dated" : "Move to misc"}
-                      </button>
                     </div>
                     <input
                       className="task-url-edit-input"
@@ -769,13 +712,6 @@ function DayModal({
                         ) : (
                           <span className="day-modal-edit-state">In misc</span>
                         )}
-                        <button
-                          type="button"
-                          className="text-button day-modal-misc-link"
-                          onClick={() => setEditIsMisc((current) => !current)}
-                        >
-                          {editIsMisc ? "Keep dated" : "Move to misc"}
-                        </button>
                       </div>
                       <input
                         className="task-url-edit-input"
@@ -893,13 +829,6 @@ function DayModal({
                           ) : (
                             <span className="day-modal-edit-state">In misc</span>
                           )}
-                          <button
-                            type="button"
-                            className="text-button day-modal-misc-link"
-                            onClick={() => setEditIsMisc((current) => !current)}
-                          >
-                            {editIsMisc ? "Keep dated" : "Move to misc"}
-                          </button>
                         </div>
                       </div>
                       <div className="day-modal-actions">
@@ -984,156 +913,6 @@ function DayModal({
       </motion.div>
     </div>,
     document.body,
-  );
-}
-
-// ─── Week Calendar ───────────────────────────────────────────────────────────
-
-function WeekCalendar({
-  week,
-  selectedDate,
-  onSelectDate,
-  onRefreshWeek,
-  onAddTask,
-  onExpandDay,
-}: {
-  week: WeekResponse;
-  selectedDate: string;
-  onSelectDate: (date: string) => void;
-  onRefreshWeek: () => Promise<void>;
-  onAddTask: (date: string) => void;
-  onExpandDay: (date: string) => void;
-}) {
-  // onSelectDate kept for habits panel sync below the calendar
-  const today = getTodayString();
-
-  // Merge overdue into the earliest week day that is today or after
-  const overdueMergedDate = week.days.find((d) => d.date >= today)?.date ?? week.days[0]?.date;
-
-  const daysByDate = new Map(week.days.map((d) => [d.date, d]));
-
-  async function toggleTask(task: Task) {
-    await api.updateTask(task.id, { completed: !task.completed });
-    await onRefreshWeek();
-  }
-
-  async function deleteTask(task: Task) {
-    await api.deleteTask(task.id);
-    await onRefreshWeek();
-  }
-
-  return (
-    <div className="week-calendar">
-      {week.days.map((day, idx) => {
-        const isToday = day.date === today;
-        const isSelected = day.date === selectedDate;
-        const isPast = day.date < today;
-        // Pre-week overdue (from before Monday)
-        const legacyOverdue = day.date === overdueMergedDate ? week.overdue_tasks : [];
-        // Within-week overdue: incomplete tasks from earlier days that have already passed
-        const weekOverdue = day.date === overdueMergedDate
-          ? week.days
-              .filter((d) => d.date < day.date && d.date < today)
-              .flatMap((d) => d.tasks.filter((t) => !t.completed))
-          : [];
-        const allOverdue = [...legacyOverdue, ...weekOverdue];
-
-        const pendingTasks = day.tasks.filter((t) => !t.completed);
-        const doneTasks = day.tasks.filter((t) => t.completed);
-
-        const MAX_PILLS = 4;
-        const totalItems = pendingTasks.length + (allOverdue.length > 0 ? 1 : 0) + allOverdue.length + doneTasks.length;
-        let remaining = MAX_PILLS;
-        const shownPending = pendingTasks.slice(0, remaining);
-        remaining = Math.max(0, remaining - shownPending.length);
-        const showOverdueDivider = allOverdue.length > 0 && remaining > 0;
-        if (showOverdueDivider) remaining = Math.max(0, remaining - 1);
-        const shownOverdue = allOverdue.slice(0, remaining);
-        remaining = Math.max(0, remaining - shownOverdue.length);
-        const shownDone = doneTasks.slice(0, remaining);
-        const hiddenCount = totalItems - shownPending.length - (showOverdueDivider ? 1 : 0) - shownOverdue.length - shownDone.length;
-
-        return (
-          <div
-            key={day.date}
-            className={`cal-day ${isToday ? "cal-today" : ""} ${isSelected ? "cal-selected" : ""} ${isPast && !isToday ? "cal-past" : ""}`}
-            onClick={() => onSelectDate(day.date)}
-          >
-            <div className="cal-day-header-shell">
-              <button
-                type="button"
-                className="cal-day-header"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onSelectDate(day.date);
-                  onExpandDay(day.date);
-                }}
-                aria-label={`Open ${DAY_NAMES[idx]} ${formatDayLabel(day.date)} details`}
-              >
-                <span className="cal-day-name">{DAY_NAMES[idx]}</span>
-                <span className="cal-day-num">{new Date(`${day.date}T12:00:00`).getDate()}</span>
-              </button>
-            </div>
-
-            <div className="cal-day-tasks">
-              {shownPending.map((task) => (
-                <TaskPill
-                  key={task.id}
-                  task={task}
-                  onToggle={() => void (async () => { await toggleTask(task); })()}
-                  onDelete={() => void (async () => { await deleteTask(task); })()}
-                />
-              ))}
-
-              {showOverdueDivider && (
-                <>
-                  <div className="cal-overdue-divider" />
-                  {shownOverdue.map((task) => (
-                    <div key={`od-${task.id}`} className="task-pill overdue-pill priority-high">
-                      <button
-                        className="pill-check"
-                        onClick={(e) => { e.stopPropagation(); void toggleTask(task); }}
-                      />
-                      <span className="pill-text">{task.text}</span>
-                      <button
-                        className="pill-delete"
-                        onClick={(e) => { e.stopPropagation(); void deleteTask(task); }}
-                      >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {shownDone.map((task) => (
-                <TaskPill
-                  key={task.id}
-                  task={task}
-                  onToggle={() => void (async () => { await toggleTask(task); })()}
-                  onDelete={() => void (async () => { await deleteTask(task); })()}
-                />
-              ))}
-
-              {hiddenCount > 0 && (
-                <div className="cal-more-pill">+{hiddenCount} more</div>
-              )}
-            </div>
-
-            <button
-              className="cal-add-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddTask(day.date);
-              }}
-              aria-label={`Add task for ${formatDayLabel(day.date)}`}
-            >
-              <Plus size={12} />
-            </button>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 
@@ -1505,6 +1284,11 @@ function TodayTasksPanel({
     await onRefresh();
   }
 
+  async function moveToMisc(task: Task) {
+    await api.updateTask(task.id, { is_misc: true, priority: DEFAULT_TASK_PRIORITY });
+    await onRefresh();
+  }
+
   return (
     <motion.section className="surface-card today-tasks-panel" {...reveal}>
       <div className="surface-header">
@@ -1536,6 +1320,14 @@ function TodayTasksPanel({
                   <ExternalLink size={10} />
                 </a>
               )}
+              <button
+                className="icon-button today-task-misc-btn"
+                onClick={(e) => { e.stopPropagation(); void moveToMisc(task); }}
+                aria-label={`Move ${task.text} to misc`}
+                title="Move to misc"
+              >
+                <Inbox size={13} />
+              </button>
             </div>
           </div>
         ))}
@@ -1577,6 +1369,14 @@ function TodayTasksPanel({
                     {task.completed ? "✓" : ""}
                   </button>
                   <span className="row-label today-task-overdue-text">{task.text}</span>
+                  <button
+                    className="icon-button today-task-misc-btn"
+                    onClick={(e) => { e.stopPropagation(); void moveToMisc(task); }}
+                    aria-label={`Move ${task.text} to misc`}
+                    title="Move to misc"
+                  >
+                    <Inbox size={13} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -1986,20 +1786,19 @@ export function TodayPage({
 
       {/* Week Calendar */}
       <motion.section className="calendar-card" {...reveal}>
-        <div className="calendar-scroll-shell">
-          {week ? (
-            <WeekCalendar
-              week={week}
-              selectedDate={selectedDate}
-              onSelectDate={handleSelectDate}
-              onRefreshWeek={() => fetchWeek(weekStart)}
-              onAddTask={(date) => setAddModalDate(date)}
-              onExpandDay={(date) => setExpandedDayDate(date)}
-            />
-          ) : (
-            <div className="cal-loading">Loading week&hellip;</div>
-          )}
-        </div>
+        {week ? (
+          <WeekTimeGrid
+            week={week}
+            habits={data.habits}
+            selectedDate={selectedDate}
+            onSelectDate={handleSelectDate}
+            onExpandDay={(date) => setExpandedDayDate(date)}
+            onAddTask={(date) => setAddModalDate(date)}
+            onRefresh={refreshAll}
+          />
+        ) : (
+          <div className="cal-loading">Loading week&hellip;</div>
+        )}
       </motion.section>
 
       {/* Tasks (left) + Habits & Misc combined (right) */}

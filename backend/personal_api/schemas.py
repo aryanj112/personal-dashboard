@@ -229,6 +229,24 @@ class RecurringTaskUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class CalendarBlockCreate(BaseModel):
+    date: dt_date
+    start_minute: int = Field(ge=0, le=24 * 60 - 1)
+    duration_minutes: int | None = Field(default=None, ge=15, le=24 * 60)
+    kind: str = Field(pattern="^(task|habit|temp)$")
+    task_id: int | None = None
+    habit_id: int | None = None
+    label: str = Field(default="", max_length=200)
+
+
+class CalendarBlockUpdate(BaseModel):
+    date: dt_date | None = None
+    start_minute: int | None = Field(default=None, ge=0, le=24 * 60 - 1)
+    duration_minutes: int | None = Field(default=None, ge=15, le=24 * 60)
+    label: str | None = Field(default=None, max_length=200)
+    completed: bool | None = None
+
+
 class ResumeCompileRequest(BaseModel):
     name: str = Field(default="main", min_length=1, max_length=120)
     source: str = Field(min_length=1, max_length=50_000)

@@ -5507,7 +5507,9 @@ a.company-chip:hover {
 /* Scrolling grid */
 .wtg-scroll {
   overflow-y: auto;
-  max-height: 30rem;
+  /* The 6:30am–12:30am window is 18h at 34px/hr ≈ 612px, so 39rem shows all of
+     it with no scrolling at all. The vh cap keeps short screens usable. */
+  max-height: min(39rem, 82vh);
 }
 
 .wtg-body {
@@ -5697,4 +5699,42 @@ a.company-chip:hover {
     grid-template-columns: 2.6rem repeat(7, minmax(3.5rem, 1fr));
   }
   .wtg-scroll { overflow-x: auto; }
+}
+
+/* Calendar collapse */
+.wtg-collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  background: none;
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  text-align: left;
+}
+
+.wtg-collapse-toggle:hover { color: var(--text); }
+
+.wtg-collapse-caret {
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.wtg.is-collapsed .wtg-collapse-caret {
+  transform: rotate(-90deg);
+}
+
+.wtg-collapse-count {
+  margin-left: auto;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  color: var(--muted);
 }

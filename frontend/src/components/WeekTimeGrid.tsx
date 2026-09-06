@@ -1,14 +1,32 @@
-import { DragEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Plus, Trash2, X } from "lucide-react";
+import { DragEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useState } from "react";
+import { ChevronDown, ExternalLink, Plus, Trash2, X } from "lucide-react";
 import { api } from "../lib/api";
 import type { CalendarBlock, Habit, Task, WeekResponse } from "../lib/types";
 
 const SLOT_MINUTES = 15;
 const DEFAULT_DURATION = 30;
 const MIN_DURATION = 15;
-const HOUR_HEIGHT = 52; // px
+const HOUR_HEIGHT = 34; // px — compact enough that the whole window nearly fits
 const PX_PER_MINUTE = HOUR_HEIGHT / 60;
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// The grid only covers the waking day: 6:30am through 12:30am. Rendering the
+// dead overnight hours just added scrolling. Minutes are stored 0–1439, so the
+// post-midnight tail (00:00–00:30) is displayed at 1440+ on this axis.
+const DAY_START_MINUTE = 6 * 60 + 30; // 6:30am
+const DAY_END_MINUTE = 24 * 60 + 30; // 12:30am next day
+const WINDOW_MINUTES = DAY_END_MINUTE - DAY_START_MINUTE;
+
+/** Where a stored minute sits on the display axis. */
+function toAxis(startMinute: number) {
+  return startMinute < DAY_START_MINUTE ? startMinute + 24 * 60 : startMinute;
+}
+
+/** Hour boundaries inside the window: 7am, 8am … 12am. */
+const HOUR_MARKS = Array.from(
+  { length: Math.floor(DAY_END_MINUTE / 60) - Math.ceil(DAY_START_MINUTE / 60) + 1 },
+  (_, i) => (Math.ceil(DAY_START_MINUTE / 60) + i) * 60,
+);
 
 /** What a drag is carrying. Read on drop to decide create-vs-move. */
 type DragPayload =
@@ -18,14 +36,26 @@ type DragPayload =
   | { source: "block"; blockId: number; grabOffsetMinutes: number };
 
 const DRAG_MIME = "application/x-personal-block";
+const COLLAPSED_KEY = "personal-calendar-collapsed";
 
-function snap(minute: number) {
-  return Math.max(0, Math.min(24 * 60 - SLOT_MINUTES, Math.round(minute / SLOT_MINUTES) * SLOT_MINUTES));
+/** Snap an axis minute to the slot grid, kept inside the visible window. */
+function snap(axisMinute: number) {
+  const clamped = Math.max(
+    DAY_START_MINUTE,
+    Math.min(DAY_END_MINUTE - SLOT_MINUTES, axisMinute),
+  );
+  return Math.round(clamped / SLOT_MINUTES) * SLOT_MINUTES;
+}
+
+/** Axis minute back to a stored 0–1439 minute. */
+function toStored(axisMinute: number) {
+  return axisMinute % (24 * 60);
 }
 
 function formatTime(minute: number) {
-  const h24 = Math.floor(minute / 60);
-  const m = minute % 60;
+  const wrapped = minute % (24 * 60);
+  const h24 = Math.floor(wrapped / 60);
+  const m = wrapped % 60;
   const suffix = h24 < 12 ? "am" : "pm";
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return m === 0 ? `${h12}${suffix}` : `${h12}:${String(m).padStart(2, "0")}${suffix}`;
@@ -101,8 +131,13 @@ export function WeekTimeGrid({
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [tempLabel, setTempLabel] = useState("");
   const [dropHint, setDropHint] = useState<{ date: string; minute: number } | null>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const scrolledRef = useRef(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem(COLLAPSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const today = getTodayString();
 
   const loadBlocks = useCallback(async () => {
@@ -114,12 +149,13 @@ export function WeekTimeGrid({
     void loadBlocks();
   }, [loadBlocks]);
 
-  // Open on the working day rather than midnight.
   useEffect(() => {
-    if (scrolledRef.current || !gridRef.current) return;
-    gridRef.current.scrollTop = 7 * HOUR_HEIGHT;
-    scrolledRef.current = true;
-  }, []);
+    try {
+      window.localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch {
+      /* storage unavailable — collapse just won't persist */
+    }
+  }, [collapsed]);
 
   const scheduledTaskIds = new Set(
     blocks.filter((b) => b.kind === "task" && b.taskId !== null).map((b) => b.taskId as number),
@@ -130,9 +166,10 @@ export function WeekTimeGrid({
   // stay draggable onto a time.
   const overdueHostDate = week.days.find((d) => d.date >= today)?.date ?? week.days[0]?.date;
 
+  /** Axis minute (6:30am-based) under the cursor. */
   function minuteFromEvent(event: { clientY: number }, column: HTMLElement) {
     const rect = column.getBoundingClientRect();
-    return snap((event.clientY - rect.top) / PX_PER_MINUTE);
+    return snap(DAY_START_MINUTE + (event.clientY - rect.top) / PX_PER_MINUTE);
   }
 
   function startDrag(event: DragEvent, payload: DragPayload) {
@@ -170,9 +207,9 @@ export function WeekTimeGrid({
       const moved = blocks.find((b) => b.id === payload.blockId);
       // Optimistic: the block follows the cursor immediately.
       setBlocks((prev) =>
-        prev.map((b) => (b.id === payload.blockId ? { ...b, date, startMinute: start } : b)),
+        prev.map((b) => (b.id === payload.blockId ? { ...b, date, startMinute: toStored(start) } : b)),
       );
-      await api.updateCalendarBlock(payload.blockId, { date, start_minute: start });
+      await api.updateCalendarBlock(payload.blockId, { date, start_minute: toStored(start) });
       // Keep the underlying task's due date in step with where it now sits.
       if (moved?.kind === "task" && moved.taskId !== null && moved.date !== date) {
         await api.updateTask(moved.taskId, { date });
@@ -184,7 +221,7 @@ export function WeekTimeGrid({
     if (payload.source === "task") {
       await api.createCalendarBlock({
         date,
-        start_minute: dropMinute,
+        start_minute: toStored(dropMinute),
         duration_minutes: DEFAULT_DURATION,
         kind: "task",
         task_id: payload.taskId,
@@ -199,7 +236,7 @@ export function WeekTimeGrid({
     if (payload.source === "habit") {
       await api.createCalendarBlock({
         date,
-        start_minute: dropMinute,
+        start_minute: toStored(dropMinute),
         duration_minutes: DEFAULT_DURATION,
         kind: "habit",
         habit_id: payload.habitId,
@@ -208,7 +245,7 @@ export function WeekTimeGrid({
       if (!payload.label.trim()) return;
       await api.createCalendarBlock({
         date,
-        start_minute: dropMinute,
+        start_minute: toStored(dropMinute),
         duration_minutes: DEFAULT_DURATION,
         kind: "temp",
         label: payload.label.trim(),
@@ -229,11 +266,15 @@ export function WeekTimeGrid({
     const startDuration = block.durationMinutes;
     let latest = startDuration;
 
+    const axisStart = toAxis(block.startMinute);
     const onMove = (moveEvent: PointerEvent) => {
       const deltaMinutes = (moveEvent.clientY - startY) / PX_PER_MINUTE;
+      // Durations snap to the slot grid but are not clamped to the window's
+      // absolute range the way a start time is — only to the window's end.
+      const snapped = Math.round((startDuration + deltaMinutes) / SLOT_MINUTES) * SLOT_MINUTES;
       const next = Math.max(
         MIN_DURATION,
-        Math.min(24 * 60 - block.startMinute, snap(startDuration + deltaMinutes)),
+        Math.min(DAY_END_MINUTE - axisStart, snapped),
       );
       if (next !== latest) {
         latest = next;
@@ -277,8 +318,27 @@ export function WeekTimeGrid({
     await loadBlocks();
   }
 
+  const scheduledCount = blocks.length;
+
   return (
-    <div className="wtg">
+    <div className={`wtg ${collapsed ? "is-collapsed" : ""}`}>
+      <button
+        type="button"
+        className="wtg-collapse-toggle"
+        onClick={() => setCollapsed((c) => !c)}
+        aria-expanded={!collapsed}
+      >
+        <ChevronDown size={14} className="wtg-collapse-caret" />
+        <span>Calendar</span>
+        {collapsed && scheduledCount > 0 && (
+          <span className="wtg-collapse-count">
+            {scheduledCount} block{scheduledCount === 1 ? "" : "s"} this week
+          </span>
+        )}
+      </button>
+
+      {collapsed ? null : (
+      <>
       {/* Palette: drag these onto the grid */}
       <div className="wtg-palette">
         <span className="wtg-palette-label">Drag onto the calendar</span>
@@ -396,13 +456,17 @@ export function WeekTimeGrid({
         })}
       </div>
 
-      {/* Scrolling time grid */}
-      <div className="wtg-scroll" ref={gridRef}>
-        <div className="wtg-body" style={{ height: 24 * HOUR_HEIGHT }}>
+      {/* Time grid, 6:30am – 12:30am */}
+      <div className="wtg-scroll">
+        <div className="wtg-body" style={{ height: WINDOW_MINUTES * PX_PER_MINUTE }}>
           <div className="wtg-gutter">
-            {Array.from({ length: 24 }, (_, hour) => (
-              <div key={hour} className="wtg-hour-label" style={{ top: hour * HOUR_HEIGHT }}>
-                {hour === 0 ? "" : formatTime(hour * 60)}
+            {HOUR_MARKS.map((mark) => (
+              <div
+                key={mark}
+                className="wtg-hour-label"
+                style={{ top: (mark - DAY_START_MINUTE) * PX_PER_MINUTE }}
+              >
+                {formatTime(mark)}
               </div>
             ))}
           </div>
@@ -418,15 +482,19 @@ export function WeekTimeGrid({
                 onDragLeave={() => setDropHint(null)}
                 onDrop={(e) => void handleColumnDrop(e, day.date)}
               >
-                {Array.from({ length: 24 }, (_, hour) => (
-                  <div key={hour} className="wtg-hour-line" style={{ top: hour * HOUR_HEIGHT }} />
+                {HOUR_MARKS.map((mark) => (
+                  <div
+                    key={mark}
+                    className="wtg-hour-line"
+                    style={{ top: (mark - DAY_START_MINUTE) * PX_PER_MINUTE }}
+                  />
                 ))}
 
                 {dropHint?.date === day.date && (
                   <div
                     className="wtg-drop-hint"
                     style={{
-                      top: dropHint.minute * PX_PER_MINUTE,
+                      top: (dropHint.minute - DAY_START_MINUTE) * PX_PER_MINUTE,
                       height: DEFAULT_DURATION * PX_PER_MINUTE,
                     }}
                   >
@@ -445,7 +513,7 @@ export function WeekTimeGrid({
                         block.completed ? "is-done" : ""
                       } ${isShort ? "is-short" : ""}`}
                       style={{
-                        top: block.startMinute * PX_PER_MINUTE,
+                        top: (toAxis(block.startMinute) - DAY_START_MINUTE) * PX_PER_MINUTE,
                         height: Math.max(block.durationMinutes * PX_PER_MINUTE, 14),
                         left: `calc(${place.column * widthPct}% + 2px)`,
                         width: `calc(${widthPct}% - 4px)`,
@@ -511,6 +579,8 @@ export function WeekTimeGrid({
           })}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

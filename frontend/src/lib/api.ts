@@ -1,6 +1,4 @@
 import type {
-  CalendarBlock,
-  CalendarBlockKind,
   Company,
   DashboardResponse,
   FinanceCategory,
@@ -70,43 +68,6 @@ export const api = {
     return request(`/api/habits/${habitId}/log`, {
       method: "PUT",
       body: JSON.stringify({ date, completed }),
-    });
-  },
-  getCalendarBlocks(start: string, end: string) {
-    return request<CalendarBlock[]>(`/api/calendar/blocks?start=${start}&end=${end}`);
-  },
-  createCalendarBlock(payload: {
-    date: string;
-    start_minute: number;
-    duration_minutes?: number;
-    kind: CalendarBlockKind;
-    task_id?: number | null;
-    habit_id?: number | null;
-    label?: string;
-  }) {
-    return request<CalendarBlock>("/api/calendar/blocks", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-  updateCalendarBlock(
-    blockId: number,
-    patch: {
-      date?: string;
-      start_minute?: number;
-      duration_minutes?: number;
-      label?: string;
-      completed?: boolean;
-    },
-  ) {
-    return request<CalendarBlock>(`/api/calendar/blocks/${blockId}`, {
-      method: "PATCH",
-      body: JSON.stringify(patch),
-    });
-  },
-  deleteCalendarBlock(blockId: number) {
-    return request<{ ok: boolean }>(`/api/calendar/blocks/${blockId}`, {
-      method: "DELETE",
     });
   },
   getWeek(weekStart?: string) {

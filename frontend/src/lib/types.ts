@@ -236,22 +236,6 @@ export type FinanceResponse = {
   wishlist: FinanceWishlistItem[];
 };
 
-export type CalendarBlockKind = "task" | "habit" | "temp";
-
-export type CalendarBlock = {
-  id: number;
-  date: string;
-  startMinute: number;
-  durationMinutes: number;
-  kind: CalendarBlockKind;
-  taskId: number | null;
-  habitId: number | null;
-  title: string;
-  completed: boolean;
-  /** Guitar/Exercise complete by logging a session, not by ticking a box. */
-  sessionBacked: boolean;
-};
-
 export type Company = {
   id: number;
   name: string;

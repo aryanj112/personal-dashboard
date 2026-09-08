@@ -488,26 +488,6 @@ def create_schema() -> None:
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Time-blocked entries on the week calendar. A block either points at
-            -- a task, points at a habit, or is a standalone "temp" block whose
-            -- label and completion live on the row itself.
-            CREATE TABLE IF NOT EXISTS calendar_blocks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                block_date TEXT NOT NULL,
-                start_minute INTEGER NOT NULL,
-                duration_minutes INTEGER NOT NULL DEFAULT 30,
-                kind TEXT NOT NULL CHECK (kind IN ('task', 'habit', 'temp')),
-                task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
-                habit_id INTEGER REFERENCES habits(id) ON DELETE CASCADE,
-                label TEXT NOT NULL DEFAULT '',
-                completed INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_calendar_blocks_date
-                ON calendar_blocks(block_date);
-
             CREATE TABLE IF NOT EXISTS app_notes (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 content TEXT NOT NULL DEFAULT '',

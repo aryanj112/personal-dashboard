@@ -22,7 +22,9 @@ const KEY_LABELS = CAGED_KEYS;
 const CAGED_ROOT_INDICES = [0, 9, 7, 4, 2];
 
 function useChordRootNavigation() {
-  const [cagedOnly, setCagedOnly] = useState(false);
+  // Opens on the CAGED keys, which is the usual starting point; the toggle
+  // widens it to all twelve.
+  const [cagedOnly, setCagedOnly] = useState(true);
   const [rootPosition, setRootPosition] = useState(0);
   const rootIndices = cagedOnly ? CAGED_ROOT_INDICES : KEY_LABELS.map((_, index) => index);
   const keyIdx = rootIndices[rootPosition] ?? 0;

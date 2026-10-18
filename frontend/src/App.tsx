@@ -28,8 +28,6 @@ type Route =
   | "networking"
   | "resume"
   | "settings";
-type ColorTheme = "light" | "dark";
-type SurfaceMood = "studio" | "industrial";
 type DashboardPreferences = {
   show_dashboard_refresh: boolean;
   show_open_today: boolean;
@@ -39,8 +37,6 @@ type DashboardPreferences = {
 };
 
 const DEFAULT_ROUTE: Route = "dashboard";
-const DEFAULT_THEME: ColorTheme = "dark";
-const DEFAULT_MOOD: SurfaceMood = "studio";
 const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
   show_dashboard_refresh: false,
   show_open_today: true,
@@ -49,8 +45,6 @@ const DEFAULT_DASHBOARD_PREFERENCES: DashboardPreferences = {
   show_resume: false,
 };
 const ROUTE_STORAGE_KEY = "personal-route";
-const THEME_STORAGE_KEY = "personal-theme";
-const MOOD_STORAGE_KEY = "personal-mood";
 const TIME_ZONE_STORAGE_KEY = "personal-time-zone";
 const DASHBOARD_PREFERENCES_STORAGE_KEY = "personal-dashboard-preferences";
 const NETWORKING_OPTIONS_STORAGE_KEY = "personal-networking-options";
@@ -58,8 +52,6 @@ const NETWORKING_OPTIONS_STORAGE_KEY = "personal-networking-options";
 export default function App() {
   const [tasksDate, setTasksDate] = useState(() => getTodayString());
   const [route, setRoute] = useState<Route>(() => getStoredValue(ROUTE_STORAGE_KEY, DEFAULT_ROUTE));
-  const [theme, setTheme] = useState<ColorTheme>(() => getStoredValue(THEME_STORAGE_KEY, DEFAULT_THEME));
-  const [mood, setMood] = useState<SurfaceMood>(() => getStoredValue(MOOD_STORAGE_KEY, DEFAULT_MOOD));
   const [timeZone, setTimeZone] = useState<string>(() =>
     getStoredValue(TIME_ZONE_STORAGE_KEY, getDefaultTimeZone()),
   );
@@ -106,16 +98,6 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem(ROUTE_STORAGE_KEY, route);
   }, [route]);
-
-  useEffect(() => {
-    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-
-  useEffect(() => {
-    window.localStorage.setItem(MOOD_STORAGE_KEY, mood);
-    document.documentElement.dataset.mood = mood;
-  }, [mood]);
 
   useEffect(() => {
     window.localStorage.setItem(TIME_ZONE_STORAGE_KEY, timeZone);
@@ -188,15 +170,11 @@ export default function App() {
     />
   ) : route === "settings" ? (
     <SettingsPage
-      theme={theme}
-      mood={mood}
       timeZone={timeZone}
       guitar={guitar}
       workouts={workouts}
       dashboardPreferences={dashboardPreferences}
       networkingOptions={networkingOptions}
-      onThemeChange={setTheme}
-      onMoodChange={setMood}
       onTimeZoneChange={setTimeZone}
       onDashboardPreferencesChange={setDashboardPreferences}
       onNetworkingOptionsChange={setNetworkingOptions}

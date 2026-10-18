@@ -9,10 +9,8 @@ import {
   GripVertical,
   Guitar,
   LayoutGrid,
-  Moon,
   Plus,
   StickyNote,
-  Sun,
   Trash2,
   X,
 } from "lucide-react";
@@ -43,22 +41,16 @@ const TIME_ZONE_OPTIONS = [
 ] as const;
 
 export function SettingsPage({
-  theme,
-  mood,
   timeZone,
   guitar,
   workouts,
   dashboardPreferences,
   networkingOptions,
-  onThemeChange,
-  onMoodChange,
   onTimeZoneChange,
   onDashboardPreferencesChange,
   onNetworkingOptionsChange,
   onRefresh,
 }: {
-  theme: "light" | "dark";
-  mood: "studio" | "industrial";
   timeZone: string;
   guitar: ModuleResponse | null;
   workouts: ModuleResponse | null;
@@ -70,8 +62,6 @@ export function SettingsPage({
     show_resume: boolean;
   };
   networkingOptions: NetworkingOptionConfig;
-  onThemeChange: (theme: "light" | "dark") => void;
-  onMoodChange: (mood: "studio" | "industrial") => void;
   onTimeZoneChange: (timeZone: string) => void;
   onDashboardPreferencesChange: (preferences: {
     show_dashboard_refresh: boolean;
@@ -118,26 +108,6 @@ export function SettingsPage({
           <h2 className="hero-title hover-underline-title">Shape the workspace.</h2>
         </div>
       </motion.div>
-
-      <motion.section className="surface-card settings-appearance-row" {...reveal}>
-        <span className="metric-label">Appearance</span>
-        <div className="settings-theme-toggle">
-          <button
-            className={`settings-theme-btn ${theme === "light" ? "active" : ""}`}
-            onClick={() => onThemeChange("light")}
-          >
-            <Sun size={14} />
-            Light
-          </button>
-          <button
-            className={`settings-theme-btn ${theme === "dark" ? "active" : ""}`}
-            onClick={() => onThemeChange("dark")}
-          >
-            <Moon size={14} />
-            Dark
-          </button>
-        </div>
-      </motion.section>
 
       <motion.section className="surface-card settings-appearance-row" {...reveal}>
         <span className="metric-label">Time zone</span>

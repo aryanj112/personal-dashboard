@@ -10,39 +10,10 @@
   font-size: 91%;
   font-weight: 450;
 
-  /* Light mode: desert sand / daylight tactical */
-  --page-bg: #e8e4db;
-  --page-bg-strong: #ddd9cf;
-  --surface: rgba(240, 237, 230, 0.92);
-  --surface-strong: rgba(244, 241, 234, 0.97);
-  --surface-solid: #f2efe8;
-  --surface-ink: rgba(10, 16, 8, 0.05);
-  --text: #0d1a0c;
-  --text-soft: #3a4838;
-  --muted: #6a7868;
-  --line: rgba(20, 40, 18, 0.16);
-  --line-strong: rgba(20, 40, 18, 0.26);
-  --accent: #4a7c3a;
-  --accent-strong: #c47c10;
-  --accent-soft: #b8d4a8;
-  --success: #2a6b42;
-  --danger: #8b2020;
-  --shadow: 0 2px 12px rgba(10, 20, 8, 0.22), 0 1px 0 rgba(10, 20, 8, 0.08);
-  --paper-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  --radius-xl: 3px;
-  --radius-lg: 2px;
-  --radius-md: 2px;
-  --radius-sm: 2px;
-  --chart-0: #c47c10;
-  --chart-1: #3a7a52;
-  --chart-2: #6a7ab4;
-  --chart-3: #a83232;
-  --chart-4: #8a8428;
-  --chart-5: #4a8aaa;
-}
+  /* Keeps native controls — date pickers, selects, scrollbars — dark too. */
+  color-scheme: dark;
 
-:root[data-theme="dark"] {
-  /* Dark mode: slate gray with blue accent */
+  /* Slate gray with blue accent. The app is dark-only. */
   --page-bg: #1a1d21;
   --page-bg-strong: #1e2126;
   --surface: rgba(30, 34, 40, 0.94);
@@ -61,6 +32,10 @@
   --danger: #a83232;
   --shadow: 0 2px 16px rgba(0, 0, 0, 0.48), 0 1px 0 rgba(160, 180, 210, 0.04);
   --paper-shadow: inset 0 1px 0 rgba(160, 180, 210, 0.04);
+  --radius-xl: 3px;
+  --radius-lg: 2px;
+  --radius-md: 2px;
+  --radius-sm: 2px;
   --chart-0: #5b9bd5;
   --chart-1: #4a9a6a;
   --chart-2: #a08adc;
@@ -68,8 +43,6 @@
   --chart-4: #c4a832;
   --chart-5: #5abccc;
 }
-
-/* Industrial mood removed — light/dark only */
 
 * {
   box-sizing: border-box;
@@ -101,8 +74,8 @@ body::before {
   z-index: 0;
 }
 
-/* Scan-line texture (dark mode only) */
-:root[data-theme="dark"] body::after {
+/* Scan-line texture */
+body::after {
   content: "";
   position: fixed;
   inset: 0;
@@ -2670,39 +2643,6 @@ textarea {
   gap: 1.2rem;
   padding: 0.7rem 1rem;
   width: fit-content;
-}
-
-.settings-theme-toggle {
-  display: flex;
-  gap: 0.35rem;
-}
-
-.settings-theme-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.38rem 0.75rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
-}
-
-.settings-theme-btn.active {
-  border-color: var(--accent-strong);
-  color: var(--accent-strong);
-  background: color-mix(in srgb, var(--accent-strong) 8%, var(--surface-solid));
-}
-
-.settings-theme-btn:not(.active):hover {
-  border-color: var(--line-strong);
-  color: var(--text);
 }
 
 .settings-grid {

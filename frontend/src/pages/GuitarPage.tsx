@@ -616,18 +616,21 @@ function TheoryMaterial() {
 
   return (
     <section className="surface-card guitar-material-card guitar-theory-card">
-      <div className="theory-card-header">
-        <button
-          type="button"
-          className="surface-toggle theory-toggle"
-          aria-expanded={open}
-          aria-controls="guitar-theory-quiz"
-          onClick={() => setOpen((current) => !current)}
-        >
+      {/* Same shape as every other material card header, so it sizes alike. */}
+      <button
+        type="button"
+        className="surface-toggle"
+        aria-expanded={open}
+        aria-controls="guitar-theory-quiz"
+        onClick={() => setOpen((current) => !current)}
+      >
+        <div>
           <h3>Theory</h3>
+        </div>
+        <div className="module-toggle-meta">
           <ChevronDown className={open ? "open" : ""} size={18} />
-        </button>
-      </div>
+        </div>
+      </button>
 
       {open ? (
         <>

@@ -11,6 +11,7 @@ import {
   MoreHorizontal,
   Plus,
   Repeat,
+  Thermometer,
   Trash2,
   X,
 } from "lucide-react";
@@ -1629,6 +1630,13 @@ function HabitsPanel({
     await onRefresh();
   }
 
+  const isSickDay = data.habits.some((habit) => Boolean(habit.is_sick));
+
+  async function toggleSickDay() {
+    await api.setSickDay(!isSickDay, data.date);
+    await onRefresh();
+  }
+
   const completedCount = data.habits.filter((h) => h.completed).length;
 
   const inner = (
@@ -1637,9 +1645,22 @@ function HabitsPanel({
         <div>
           <h3>Habits</h3>
         </div>
-        <span className="habit-count">
-          {completedCount}/{data.habits.length}
-        </span>
+        <div className="habit-header-actions">
+          <button
+            type="button"
+            className={`sick-day-button${isSickDay ? " active" : ""}`}
+            onClick={() => void toggleSickDay()}
+            aria-label={isSickDay ? "Remove sick day" : "Mark sick day"}
+            aria-pressed={isSickDay}
+            title={isSickDay ? "Remove sick day" : "Mark sick day"}
+          >
+            <Thermometer size={16} />
+            Sick
+          </button>
+          <span className="habit-count">
+            {completedCount}/{data.habits.length}
+          </span>
+        </div>
       </div>
 
       <div className="habits-grid">

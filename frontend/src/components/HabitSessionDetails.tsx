@@ -27,12 +27,14 @@ export function GuitarSessionDetails({
 
   return (
     <div className="detail-panel">
-      <GuitarSessionEditor
-        date={date}
-        sections={sections}
-        onRefresh={onRefresh}
-        onSessionCreated={onSessionCreated}
-      />
+      {sessions.length === 0 ? (
+        <GuitarSessionEditor
+          date={date}
+          sections={sections}
+          onRefresh={onRefresh}
+          onSessionCreated={onSessionCreated}
+        />
+      ) : null}
       {sessions.length > 0 ? (
         <div className="editor-list">
           {sessions.map((session) => (
@@ -70,13 +72,15 @@ export function ExerciseSessionDetails({
 
   return (
     <div className="detail-panel">
-      <ExerciseSessionEditor
-        date={date}
-        sections={sections}
-        defaultRunDuration={defaultRunDuration}
-        onRefresh={onRefresh}
-        onSessionCreated={onSessionCreated}
-      />
+      {sessions.length === 0 ? (
+        <ExerciseSessionEditor
+          date={date}
+          sections={sections}
+          defaultRunDuration={defaultRunDuration}
+          onRefresh={onRefresh}
+          onSessionCreated={onSessionCreated}
+        />
+      ) : null}
       {workoutSessions.length > 0 ? (
         <div className="editor-list">
           {workoutSessions.map((session) => (
@@ -146,8 +150,8 @@ function GuitarSessionEditor({
     const payload = {
       date,
       section_ids: form.section_ids,
-      duration_minutes: 0,
-      notes: "",
+      duration_minutes: session?.duration_minutes ?? 0,
+      notes: session?.notes ?? "",
     };
     if (session) {
       await api.updateSession("guitar", session.id, payload);
@@ -230,7 +234,6 @@ function ExerciseSessionEditor({
       run_duration_input: sessionStartsAsRun
         ? formatDurationInput(session?.duration_minutes ?? defaultRunDuration)
         : formatDurationInput(defaultRunDuration),
-      notes: session?.notes ?? "",
       is_rest: session?.is_rest ?? false,
     }),
     [defaultRunDuration, session, sessionStartsAsRun],
@@ -251,7 +254,6 @@ function ExerciseSessionEditor({
     dirty:
       form.is_rest ||
       form.section_ids.length > 0 ||
-      form.notes.trim().length > 0 ||
       form.run_miles !== null ||
       (isRun && parseDurationInput(form.run_duration_input, defaultRunDuration) !== defaultRunDuration),
     onDiscard: resetForm,
@@ -265,7 +267,6 @@ function ExerciseSessionEditor({
       duration_minutes: form.is_rest ? 0 : isRun
         ? parseDurationInput(form.run_duration_input, defaultRunDuration)
         : form.duration_minutes,
-      notes: form.notes,
       is_rest: form.is_rest,
     };
     if (session) {
@@ -358,13 +359,6 @@ function ExerciseSessionEditor({
           />
         </div>
       ) : null}
-      <textarea
-        className="field-textarea"
-        rows={3}
-        value={form.notes}
-        placeholder="Notes"
-        onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-      />
       <div className="editor-actions">
         <button className="primary-button" type="button" onClick={() => void save()}>
           {session ? "Save" : "Add session"}

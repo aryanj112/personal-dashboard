@@ -14,7 +14,7 @@
 - `BASE_DIR`, `DATA_DIR`, `DB_PATH`, and `GUITAR_FILES_DIR`
 - `get_db()`: context manager that opens SQLite, enables foreign keys, commits, and closes
 - `create_schema()`: table creation, additive migrations, and seeding
-- default seed lists for habits, sections, finance categories, reflection content, and tracked companies
+- default seed lists for habits, sections, and tracked companies
 - company-alias merge helper logic
 
 ## Important Rules

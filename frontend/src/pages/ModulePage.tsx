@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Thermometer, Trash2 } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { WeeklyPieChart } from "../components/Charts";
 import { WorkoutHistoryCard } from "../components/WorkoutHistoryCard";
@@ -38,15 +38,13 @@ export function ModulePage({
     duration_minutes: kind === "workouts" ? 30 : 0,
     run_duration_input: formatDurationInput(defaultRunDuration),
     run_miles: null as number | null,
-    notes: "",
     section_ids: [] as number[],
     is_rest: false,
   });
 
   const selectedSection = data.sections.find((section) => form.section_ids.includes(section.id));
   const isRun = kind === "workouts" && !form.is_rest && selectedSection?.name === "Run";
-  const notePlaceholder =
-    kind === "guitar" ? "What part did you work on?" : "Anything worth remembering?";
+  const isSickDate = kind === "workouts" && Boolean(data.sick_dates?.includes(form.date));
   const [showWeekSessions, setShowWeekSessions] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const weekRangeLabel = getCurrentWeekRangeLabel();
@@ -62,10 +60,10 @@ export function ModulePage({
 
   async function submitSession(event: FormEvent) {
     event.preventDefault();
+    if (isSickDate) return;
     const runDuration = parseDurationInput(form.run_duration_input, defaultRunDuration);
     await api.createSession(kind, {
       date: form.date,
-      notes: form.notes,
       section_ids: form.is_rest ? [] : form.section_ids,
       is_rest: form.is_rest,
       duration_minutes:
@@ -83,7 +81,6 @@ export function ModulePage({
       duration_minutes: kind === "workouts" ? 30 : 0,
       run_duration_input: formatDurationInput(isRun ? runDuration : defaultRunDuration),
       run_miles: null,
-      notes: "",
       section_ids: [],
       is_rest: false,
     });
@@ -115,18 +112,6 @@ export function ModulePage({
                 onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
               />
             </label>
-
-            {kind !== "guitar" && (
-              <label>
-                <span>Notes</span>
-                <textarea
-                  rows={4}
-                  value={form.notes}
-                  onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-                  placeholder={notePlaceholder}
-                />
-              </label>
-            )}
 
             <div className="field-group">
               {kind !== "guitar" && (
@@ -171,6 +156,20 @@ export function ModulePage({
                   >
                     Rest Day
                   </button>
+                  {kind === "workouts" ? (
+                    <button
+                      type="button"
+                      className={`chip rest-day-chip sick-day-chip${isSickDate ? " active" : ""}`}
+                      aria-pressed={isSickDate}
+                      onClick={async () => {
+                        await api.setSickDay(!isSickDate, form.date);
+                        await onRefresh();
+                      }}
+                    >
+                      <Thermometer size={14} />
+                      Sick Day
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -219,10 +218,14 @@ export function ModulePage({
               </div>
             ) : null}
 
-            <button type="submit" className="primary-button">
-              <Plus size={16} />
-              Save session
-            </button>
+            {isSickDate ? (
+              <p className="sick-day-notice" role="status">Sick day marked for this date.</p>
+            ) : (
+              <button type="submit" className="primary-button">
+                <Plus size={16} />
+                Save session
+              </button>
+            )}
           </form>
         </motion.section>
 
@@ -271,7 +274,6 @@ export function ModulePage({
                       ? ` · ${session.run_miles} mi in ${formatDurationMinutes(session.duration_minutes)}`
                       : ""}
                   </p>
-                  {session.notes ? <small>{session.notes}</small> : null}
                 </div>
               </div>
             ))}
@@ -287,7 +289,6 @@ export function ModulePage({
                   <div key={session.id} className="session-card session-card-rest">
                     <div>
                       <strong>{formatSessionDate(session.session_date)}</strong>
-                      {session.notes ? <small>{session.notes}</small> : null}
                     </div>
                   </div>
                 ))}
@@ -353,7 +354,6 @@ export function ModulePage({
                           ? ` · ${session.run_miles} mi in ${formatDurationMinutes(session.duration_minutes)}`
                           : ""}
                       </p>
-                      {session.notes ? <small>{session.notes}</small> : null}
                     </div>
                     <button
                       className="icon-button danger"

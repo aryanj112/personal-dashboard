@@ -20,6 +20,7 @@ Base URL in local development: `http://127.0.0.1:8000`
 | `PATCH` | `/api/habits/{habit_id}` | Update habit metadata | `{ name?, is_active?, sort_order? }` |
 | `DELETE` | `/api/habits/{habit_id}` | Delete/deactivate a habit | none |
 | `PUT` | `/api/habits/{habit_id}/log` | Upsert manual habit completion | `{ date, completed, notes? }` |
+| `PUT` | `/api/habits/{habit_id}/sick-day` | Mark Singing or Exercise as sick without completing it | `{ date, is_sick }` |
 
 Notes:
 
@@ -81,7 +82,7 @@ Notes:
 
 | Method | Path | Purpose | Body |
 | --- | --- | --- | --- |
-| `GET` | `/api/workouts` | Full workouts module payload | none |
+| `GET` | `/api/workouts` | Full workouts module payload, including `sick_dates` | none |
 | `POST` | `/api/workouts/sections` | Create workout section | `{ name }` |
 | `PATCH` | `/api/workouts/sections/{section_id}` | Rename workout section | `{ name }` |
 | `DELETE` | `/api/workouts/sections/{section_id}` | Delete workout section | none |
@@ -123,22 +124,6 @@ Notes:
 - contact edits can propagate company/name/linkedin changes into `potential_connects`
 - some outreach queue edits can propagate company changes back into contacts
 
-## Internships
-
-| Method | Path | Purpose | Body |
-| --- | --- | --- | --- |
-| `GET` | `/api/internships/companies` | List active tracked companies with counts | none |
-| `GET` | `/api/internships/postings?company_id={id}` | Get one company's active postings | none |
-| `POST` | `/api/internships/fetch/{company_id}` | Refresh postings for a company | none |
-| `POST` | `/api/internships/postings/{posting_id}/summarize` | Generate/update AI summary | none |
-| `PATCH` | `/api/internships/postings/{posting_id}` | Update manual bucket or applied flag | `{ manual_bucket? }` or `{ toggle_applied: true }` |
-
-Notes:
-
-- supported source types are `greenhouse`, `lever`, `workday`, `tesla`, and `none`
-- manual buckets are `prime`, `not_prime`, `hidden`, or empty
-- summaries use local Ollama when available
-
 ## Companies
 
 | Method | Path | Purpose | Body |
@@ -150,39 +135,6 @@ Notes:
 | `DELETE` | `/api/companies/{company_id}` | Delete tracked company | none |
 
 Note: any company mutation rewrites `backend/data/companies_cowork.txt`.
-
-## Finance
-
-| Method | Path | Purpose | Body |
-| --- | --- | --- | --- |
-| `GET` | `/api/finance?month=YYYY-MM` | Month-scoped finance payload | none |
-| `GET` | `/api/finance/categories` | List categories | none |
-| `POST` | `/api/finance/categories` | Create category | `{ name }` |
-| `PATCH` | `/api/finance/categories/{category_id}` | Rename category | `{ name }` |
-| `DELETE` | `/api/finance/categories/{category_id}` | Delete unused category | none |
-| `PUT` | `/api/finance/categories/order` | Reorder categories | `{ category_ids }` |
-| `POST` | `/api/finance/expenses` | Create manual expense | `{ name, category_id, amount, date }` |
-| `PATCH` | `/api/finance/expenses/{expense_id}` | Update manual expense | `{ name?, category_id?, amount?, date? }` |
-| `DELETE` | `/api/finance/expenses/{expense_id}` | Delete manual expense | none |
-| `GET` | `/api/finance/subscriptions` | List subscription definitions | none |
-| `POST` | `/api/finance/subscriptions` | Create subscription | `{ name, category_id, amount, billing_day, start_date }` |
-| `PATCH` | `/api/finance/subscriptions/{subscription_id}` | Update subscription | `{ name?, category_id?, amount?, billing_day?, start_date?, end_date? }` |
-| `DELETE` | `/api/finance/subscriptions/{subscription_id}` | Delete subscription | none |
-| `GET` | `/api/finance/wishlist` | List wishlist items | none |
-| `POST` | `/api/finance/wishlist` | Create wishlist item | `{ name, link, price }` |
-| `PATCH` | `/api/finance/wishlist/{wishlist_item_id}` | Update wishlist item | `{ name?, link?, price? }` |
-| `DELETE` | `/api/finance/wishlist/{wishlist_item_id}` | Delete wishlist item | none |
-
-Notes:
-
-- `GET /api/finance` includes derived subscription occurrences mixed into the returned `expenses` list.
-- amounts are sent as decimal dollars in the API even though the DB stores cents.
-
-## Reflection
-
-| Method | Path | Purpose | Body |
-| --- | --- | --- | --- |
-| `GET` | `/api/reflection` | Return quotes, prompts, questions, and videos | none |
 
 ## Notes
 

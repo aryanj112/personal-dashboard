@@ -14,7 +14,7 @@ There is no cloud database, no ORM, and no separate migration framework. The app
 
 1. `run-dev.sh` starts the FastAPI backend and the Vite dev server.
 2. The frontend mounts `frontend/src/App.tsx`.
-3. `App.tsx` loads the dashboard/today/guitar/workout/finance bootstrap data in parallel.
+3. `App.tsx` loads the dashboard/today/guitar/workout data in parallel.
 4. Frontend pages call the backend through `frontend/src/lib/api.ts`.
 5. FastAPI routers delegate to `services/*.py`.
 6. Services read and write SQLite through `get_db()` in `backend/personal_api/core/db.py`.
@@ -53,13 +53,8 @@ There is no cloud database, no ORM, and no separate migration framework. The app
 - `modules.py`: shared guitar/workout session logic
 - `dashboard.py`: aggregated home-page analytics
 - `networking.py`: contacts, interactions, follow-up state, outreach sync
-- `internships.py`: tracked company fetches, posting normalization, buckets, AI summaries
-- `tesla_scraper.py`: Tesla-specific scraping path
-- `finance.py`: categories, expenses, subscriptions, wishlist, monthly projections
-- `reflection.py`: quote/prompt/question/video payload assembly
 - `resume.py`: LaTeX-to-PDF compilation
 - `companies.py`: tracked companies and cowork-text file generation
-- `ollama.py`: internship summary generation via local Ollama
 
 ## Frontend Layout
 
@@ -86,9 +81,6 @@ There is no cloud database, no ORM, and no separate migration framework. The app
 - `GuitarPage.tsx`: guitar-specific tracking, materials, song files, CAGED helpers
 - `ModulePage.tsx`: shared workout-style module page
 - `NetworkingPage.tsx`: contacts + potential outreach queue
-- `InternshipsPage.tsx`: company sidebar, fetches, posting buckets, summaries
-- `FinancePage.tsx`: month-scoped finance surface
-- `ReflectionPage.tsx`: reflective prompts and journal scratchpads
 - `ResumePage.tsx`: local resume library and PDF preview
 - `SettingsPage.tsx`: admin/configuration surfaces
 
@@ -99,7 +91,6 @@ There is no cloud database, no ORM, and no separate migration framework. The app
 - `frontend/src/lib/networking.ts`: networking enums, sort/filter helpers
 - `frontend/src/lib/dates.ts`: Monday-based week formatting
 - `frontend/src/lib/duration.ts`: duration parsing/formatting
-- `frontend/src/lib/finance.ts`: finance month/format helpers
 
 ## Persistence Model
 
@@ -109,9 +100,7 @@ There is no cloud database, no ORM, and no separate migration framework. The app
 - guitar/workout sessions and sections
 - networking contacts and interactions
 - potential outreach queue
-- tracked companies and internship postings
-- finance categories, expenses, subscriptions, wishlist
-- reflection content
+- tracked companies
 - app-wide notes
 
 ### Frontend localStorage-Backed
@@ -121,9 +110,7 @@ There is no cloud database, no ORM, and no separate migration framework. The app
 - selected mood
 - dashboard preferences
 - networking option lists
-- internship sidebar favorites/order
 - resume documents, selected resume, sidebar collapse
-- reflection journal text
 
 Important: some workflows blend both. Example: Today notes now live in the DB, but the page still migrates from a legacy localStorage key if it finds one.
 
@@ -141,27 +128,14 @@ The habit system treats `Guitar` and `Exercise` specially. Completion is derived
 
 Recurring tasks are stored as rules in `recurring_tasks`, then expanded into real `tasks` rows for visible dates. Pages that show week or recurring-task state rely on this materialization behavior.
 
-### Internship Buckets And AI Summaries
-
-Internship fetches normalize job-board payloads into `internship_postings`. The frontend then groups postings using:
-
-- automatic internship detection
-- stage-one location/title filters
-- automatic prime-role heuristics
-- manual buckets: `prime`, `not_prime`, `hidden`, or empty
-
-AI summaries are optional and generated through local Ollama.
-
 ### Style System
 
-`frontend/src/styles/app-military.css` is the active theme. `app.css` is legacy but still useful reference material. The app still persists a `mood` flag, but the active stylesheet no longer uses it.
+`frontend/src/styles/app.css` is the active theme. The app still persists a `mood` flag, but the stylesheet no longer uses it.
 
 ## External Tooling
 
 - `pdflatex`: needed by resume compilation
 - `python-multipart`: required for guitar PDF uploads
-- local `ollama`: optional, used for posting summaries
-- `camoufox[geoip]`: used by Tesla scraping
 
 ## Testing Reality
 

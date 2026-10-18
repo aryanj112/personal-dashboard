@@ -165,6 +165,31 @@ def update_guitar_song(
     return {**dict(row), "files": dicts(files)}
 
 
+def reorder_guitar_songs(
+    conn: sqlite3.Connection, group_id: int, song_ids: list[int]
+) -> None:
+    group = conn.execute(
+        "SELECT id FROM guitar_song_groups WHERE id = ?", (group_id,)
+    ).fetchone()
+    if not group:
+        raise HTTPException(status_code=404, detail="Song folder not found.")
+
+    existing_ids = [
+        row["id"]
+        for row in conn.execute(
+            "SELECT id FROM guitar_songs WHERE group_id = ? ORDER BY sort_order, id",
+            (group_id,),
+        ).fetchall()
+    ]
+    if len(song_ids) != len(existing_ids) or set(song_ids) != set(existing_ids):
+        raise HTTPException(status_code=400, detail="Song order must include each song in this folder exactly once.")
+
+    conn.executemany(
+        "UPDATE guitar_songs SET sort_order = ? WHERE id = ? AND group_id = ?",
+        ((index, song_id, group_id) for index, song_id in enumerate(song_ids, start=1)),
+    )
+
+
 def delete_guitar_song(conn: sqlite3.Connection, song_id: int) -> list[str] | None:
     existing = conn.execute(
         "SELECT id FROM guitar_songs WHERE id = ?",
@@ -293,8 +318,29 @@ def save_session(
 ) -> dict[str, Any]:
     section_ids = payload.section_ids if payload.section_ids is not None else []
     ensure_section_ids_exist(conn, section_ids, section_table)
+    requested_section_ids = set(section_ids)
 
     is_rest = getattr(payload, "is_rest", False) or False
+    merge_existing_day = False
+    if session_id is None and session_table in {"guitar_sessions", "workout_sessions"}:
+        existing_rows = conn.execute(
+            f"SELECT id FROM {session_table} WHERE session_date = ? ORDER BY id ASC",
+            (payload.date.isoformat(),),
+        ).fetchall()
+        if existing_rows:
+            session_id = existing_rows[0]["id"]
+            existing_session_ids = [row["id"] for row in existing_rows]
+            placeholders = ",".join("?" for _ in existing_session_ids)
+            existing_section_ids = {
+                row["section_id"]
+                for row in conn.execute(
+                    f"SELECT DISTINCT section_id FROM {link_table} WHERE session_id IN ({placeholders})",
+                    existing_session_ids,
+                ).fetchall()
+            }
+            section_ids = sorted(existing_section_ids | set(section_ids))
+            merge_existing_day = True
+
     if session_id is None:
         cursor = conn.execute(
             f"""
@@ -319,7 +365,14 @@ def save_session(
             f"SELECT session_date, duration_minutes, {('run_miles, is_rest,' if session_table == 'workout_sessions' else '')} notes FROM {session_table} WHERE id = ?",
             (session_id,),
         ).fetchone()
-        new_is_rest = (is_rest if is_rest is not None else bool(current["is_rest"])) if session_table == "workout_sessions" else False
+        if session_table == "workout_sessions":
+            new_is_rest = (
+                bool(current["is_rest"]) and not requested_section_ids
+                if merge_existing_day
+                else (is_rest if is_rest is not None else bool(current["is_rest"]))
+            )
+        else:
+            new_is_rest = False
         conn.execute(
             f"""
             UPDATE {session_table}
@@ -328,18 +381,26 @@ def save_session(
             """,
             (
                 payload.date.isoformat() if payload.date else current["session_date"],
-                payload.duration_minutes
+                current["duration_minutes"]
+                if merge_existing_day and (
+                    session_table == "guitar_sessions" or payload.run_miles is None
+                )
+                else payload.duration_minutes
                 if payload.duration_minutes is not None
                 else current["duration_minutes"],
                 *(
                     (
-                        payload.run_miles if payload.run_miles is not None else current["run_miles"],
+                        current["run_miles"]
+                        if merge_existing_day and payload.run_miles is None
+                        else payload.run_miles if payload.run_miles is not None else current["run_miles"],
                         1 if new_is_rest else 0,
                     )
                     if session_table == "workout_sessions"
                     else ()
                 ),
-                payload.notes if payload.notes is not None else current["notes"],
+                current["notes"]
+                if merge_existing_day
+                else payload.notes if payload.notes is not None else current["notes"],
                 session_id,
             ),
         )
@@ -363,6 +424,16 @@ def save_session(
         f"SELECT id, session_date, duration_minutes, {('run_miles, is_rest,' if session_table == 'workout_sessions' else '')} notes FROM {session_table} WHERE id = ?",
         (session_id,),
     ).fetchone()
+    if session_table != "workout_sessions" or not row["is_rest"]:
+        habit_name = "Exercise" if session_table == "workout_sessions" else "Guitar"
+        conn.execute(
+            """
+            DELETE FROM habit_sick_days
+            WHERE habit_id = (SELECT id FROM habits WHERE name = ?)
+              AND sick_date = ?
+            """,
+            (habit_name, row["session_date"]),
+        )
     sections = conn.execute(
         f"""
         SELECT s.id, s.name
@@ -388,9 +459,10 @@ def session_analytics(
     current_week_start = week_start(today).isoformat()
     start_8_weeks = week_start(today) - timedelta(weeks=7)
     rest_clause = "AND is_rest = 0" if session_table == "workout_sessions" else ""
+    selected_sessions = "DISTINCT session_date" if session_table in {"guitar_sessions", "workout_sessions"} else "id, session_date"
     sessions = conn.execute(
         f"""
-        SELECT id, session_date
+        SELECT {selected_sessions}
         FROM {session_table}
         WHERE 1=1 {rest_clause}
         ORDER BY session_date ASC
@@ -445,7 +517,7 @@ def session_analytics(
     else:
         section_rows_agg = conn.execute(
             f"""
-            SELECT s.id, s.name, COUNT(sess.id) AS minutes
+            SELECT s.id, s.name, COUNT(DISTINCT sess.session_date) AS minutes
             FROM {section_table} s
             LEFT JOIN {link_table} l ON l.section_id = s.id
             LEFT JOIN {session_table} sess

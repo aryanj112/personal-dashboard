@@ -19,6 +19,7 @@ DEFAULT_HABITS = [
     ("Guitar", 4),
     ("Exercise", 5),
     ("Journaling", 6),
+    ("Singing", 7),
 ]
 
 DEFAULT_GUITAR_SECTIONS = [
@@ -48,6 +49,7 @@ DEFAULT_GUITAR_SONG_GROUPS = [
     "Jazz",
     "Delta Blues",
     "Hendrix",
+    "Extras",
 ]
 
 DEFAULT_WORKOUT_SECTIONS = [
@@ -284,6 +286,12 @@ def create_schema() -> None:
                 completed INTEGER NOT NULL DEFAULT 1,
                 notes TEXT,
                 UNIQUE(habit_id, log_date)
+            );
+
+            CREATE TABLE IF NOT EXISTS habit_sick_days (
+                habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+                sick_date TEXT NOT NULL,
+                PRIMARY KEY (habit_id, sick_date)
             );
 
             CREATE TABLE IF NOT EXISTS tasks (
@@ -753,15 +761,15 @@ def create_schema() -> None:
                     (order, title),
                 )
 
-        guitar_group_count = conn.execute(
-            "SELECT COUNT(*) AS count FROM guitar_song_groups"
-        ).fetchone()["count"]
-        if guitar_group_count == 0:
-            for order, name in enumerate(DEFAULT_GUITAR_SONG_GROUPS, start=1):
-                conn.execute(
-                    "INSERT INTO guitar_song_groups(name, sort_order) VALUES(?, ?)",
-                    (name, order),
-                )
+        for order, name in enumerate(DEFAULT_GUITAR_SONG_GROUPS, start=1):
+            conn.execute(
+                """
+                INSERT INTO guitar_song_groups(name, sort_order)
+                VALUES(?, ?)
+                ON CONFLICT(name) DO NOTHING
+                """,
+                (name, order),
+            )
 
         for section_name in DEFAULT_WORKOUT_SECTIONS:
             conn.execute(

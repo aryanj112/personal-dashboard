@@ -42,8 +42,7 @@ frontend/
 - There is no URL router; `App.tsx` stores the current route in state/localStorage.
 - The frontend loads several core payloads in parallel and passes them down by props.
 - Settings and some workflow data are persisted in localStorage.
-- The active stylesheet is `src/styles/app-military.css`.
-- `src/styles/app.css` is a legacy theme that still acts as a useful reference.
+- The active stylesheet is `src/styles/app.css`.
 - The app still persists a `mood` setting, but the active stylesheet no longer uses it.
 
 ## Directory Guides

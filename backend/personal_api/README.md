@@ -33,7 +33,6 @@ Routers are registered in `main.py` in this order:
 7. `companies`
 8. `notes`
 9. `links`
-10. `finance`
-11. `resume`
+10. `resume`
 
 The registration order is not usually important, but this is the quickest place to check whether a route file is actually mounted.

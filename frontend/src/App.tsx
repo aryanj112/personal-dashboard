@@ -180,7 +180,12 @@ export default function App() {
   ) : route === "guitar" && guitar ? (
     <GuitarPage data={guitar} onRefresh={() => loadAll(tasksDate)} />
   ) : route === "workouts" && workouts ? (
-    <ModulePage title="Workouts" kind="workouts" data={workouts} onRefresh={() => loadAll(tasksDate)} />
+    <ModulePage
+      title="Workouts"
+      kind="workouts"
+      data={workouts}
+      onRefresh={() => loadAll(tasksDate)}
+    />
   ) : route === "settings" ? (
     <SettingsPage
       theme={theme}

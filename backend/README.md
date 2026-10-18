@@ -25,7 +25,6 @@ The dev helper at the repo root, `../run-dev.sh`, starts this together with the 
 - `uvicorn`
 - `python-multipart`
 - `httpx`
-- `camoufox[geoip]`
 
 ## Layout
 

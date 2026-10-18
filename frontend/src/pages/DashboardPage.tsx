@@ -140,6 +140,7 @@ export function DashboardPage({
     const names = new Set(today.habits.map((habit) => habit.name));
     data.habit_heatmap.forEach((cell) => {
       cell.habits.forEach((habit) => names.add(habit));
+      cell.sick_habits?.forEach((habit) => names.add(habit));
     });
     return Array.from(names);
   }, [data.habit_heatmap, today.habits]);
@@ -150,10 +151,12 @@ export function DashboardPage({
 
     return data.habit_heatmap.map((cell) => {
       const completed = cell.habits.includes(selectedHeatmapHabit);
+      const sick = cell.sick_habits?.includes(selectedHeatmapHabit) ?? false;
       return {
         ...cell,
         count: completed ? 1 : 0,
         habits: completed ? [selectedHeatmapHabit] : [],
+        sick_habits: sick ? [selectedHeatmapHabit] : [],
         total_habits: 1,
       };
     });

@@ -1115,6 +1115,19 @@ textarea {
   gap: 0.9rem;
 }
 
+.guitar-material-section {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.guitar-material-heading {
+  margin: 0;
+  font-family: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .guitar-material-card {
   padding: 1rem;
   border-radius: var(--radius-sm);
@@ -1123,6 +1136,125 @@ textarea {
 .guitar-material-body {
   display: grid;
   gap: 0.9rem;
+}
+
+.guitar-theory-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.theory-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.theory-card-header h3 {
+  margin: 0;
+}
+
+.theory-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin-left: auto;
+  color: var(--text-soft);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.theory-score strong {
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.theory-quiz,
+.theory-choice-group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.theory-question {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  border-left: 2px solid var(--accent-strong);
+  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+}
+
+.theory-question span {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.theory-question strong {
+  color: var(--text);
+  font-size: 1.25rem;
+}
+
+.theory-choice-group .field-caption {
+  margin: 0;
+}
+
+.theory-note-choices,
+.theory-accidental-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.theory-choice {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.55rem;
+  min-height: 2.45rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-solid) 80%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.theory-choice:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+}
+
+.theory-choice.active {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+  color: #000;
+}
+
+.theory-choice:disabled {
+  cursor: default;
+}
+
+.theory-accidental-choice {
+  font-size: 1.15rem;
+}
+
+.theory-result {
+  padding: 0.7rem 0.85rem;
+  border-left: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.theory-result.incorrect {
+  border-left-color: var(--danger);
+}
+
+.theory-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .guitar-classical-grid {
@@ -1273,6 +1405,26 @@ textarea {
   flex-shrink: 0;
 }
 
+.chord-caged-toggle {
+  min-height: 2rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-soft);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chord-caged-toggle:hover,
+.chord-caged-toggle.active {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-raised));
+  color: var(--text);
+}
+
 .chord-browser-dots {
   display: flex;
   gap: 0.35rem;
@@ -1308,8 +1460,8 @@ textarea {
 }
 
 .chord-pos-row .chord-diagram-svg {
-  width: 118px;
-  height: 142px;
+  width: 150px;
+  height: 180px;
 }
 
 .chord-diagram {
@@ -1331,6 +1483,21 @@ textarea {
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--text-dim);
+}
+
+.chord-diagram-board {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.chord-diagram-start-marker {
+  margin-top: 2rem;
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .chord-diagram-svg {
@@ -1359,9 +1526,15 @@ textarea {
 .chord-sevenths-row {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.4rem;
   margin-top: 0.75rem;
   width: 100%;
+}
+
+.chord-browser-sevenths .chord-pos-row {
+  width: 100%;
+  justify-content: safe center;
 }
 
 .chord-row-type-label {
@@ -1369,7 +1542,44 @@ textarea {
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--text-soft);
-  padding-left: 0.1rem;
+  text-align: center;
+}
+
+.chord-row-type-label-tooltip {
+  position: relative;
+  cursor: help;
+  outline: none;
+}
+
+.chord-row-interval-tooltip {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(100% + 0.45rem);
+  left: 50%;
+  display: grid;
+  gap: 0.2rem;
+  min-width: max-content;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: left;
+  transform: translateX(-50%) translateY(0.2rem);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+}
+
+.chord-row-type-label-tooltip:hover .chord-row-interval-tooltip,
+.chord-row-type-label-tooltip:focus-visible .chord-row-interval-tooltip {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  visibility: visible;
 }
 
 .guitar-delta-grid {
@@ -1443,19 +1653,103 @@ textarea {
 .guitar-delta-song-card {
   display: grid;
   align-content: start;
-  gap: 0.85rem;
-  min-height: 10rem;
-  padding: 1rem 1.1rem;
+  align-self: start;
+  gap: 1.1rem;
+  min-height: 0;
+  padding: 0.85rem 1rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface-solid) 84%, white 4%);
 }
 
+.guitar-delta-song-card[draggable="true"] {
+  cursor: grab;
+}
+
+.guitar-delta-song-card.dragging {
+  opacity: 0.5;
+}
+
+.guitar-delta-song-card.drop-target {
+  border-color: var(--accent-strong);
+}
+
 .guitar-delta-song-header {
+  display: block;
+  width: 100%;
+}
+
+.guitar-song-title-button {
   display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.75rem;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+  width: 100%;
+  padding: 0.1rem 0;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+}
+
+.guitar-song-title-button svg {
+  flex: 0 0 auto;
+  margin-top: 0.08rem;
+}
+
+.guitar-song-title-button .guitar-song-drag-handle {
+  color: var(--text-soft);
+}
+
+.guitar-song-title-button span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.guitar-song-card-upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+  min-height: 1.9rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.68rem;
+  letter-spacing: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.guitar-song-card-upload.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.guitar-song-view-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+  min-height: 1.9rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.68rem;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.guitar-delta-song-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.guitar-delta-song-actions > .icon-button {
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-left: auto;
 }
 
 .guitar-delta-song-card span {
@@ -1464,11 +1758,6 @@ textarea {
   line-height: 1.3;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.guitar-delta-song-meta {
-  color: var(--text-soft);
-  font-size: 0.88rem;
 }
 
 .guitar-delta-file-list {
@@ -1508,6 +1797,7 @@ textarea {
   .guitar-delta-song-grid {
     grid-template-columns: 1fr;
   }
+
 }
 
 .guitar-song-group {
@@ -1535,6 +1825,244 @@ textarea {
   inset: 0;
   opacity: 0;
   cursor: pointer;
+}
+
+.song-pdf-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overscroll-behavior: contain;
+}
+
+.song-pdf-viewer {
+  display: flex;
+  flex-direction: column;
+  width: 99vw;
+  height: 98vh;
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-solid);
+  box-shadow: 0 28px 70px color-mix(in srgb, #000 42%, transparent);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.song-pdf-header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.song-pdf-heading {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.song-pdf-heading h3 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-pdf-heading span,
+.song-pdf-navigation {
+  color: var(--text-soft);
+  font-size: 0.8rem;
+}
+
+.song-pdf-upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.song-pdf-upload.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.song-pdf-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-height: 2.7rem;
+}
+
+.song-pdf-page-navigation,
+.song-pdf-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.song-pdf-page-navigation-spacer {
+  flex: 1;
+}
+
+.song-pdf-zoom-controls {
+  margin-left: auto;
+}
+
+.song-pdf-zoom-controls .icon-button {
+  width: 2rem;
+  height: 2rem;
+}
+
+.song-pdf-zoom-reset {
+  min-width: 3.25rem;
+  padding: 0.3rem 0.4rem;
+  border: 0;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.song-pdf-zoom-reset:hover {
+  color: var(--text);
+}
+
+.song-pdf-pages {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1;
+  gap: 0.8rem;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.song-pdf-pages.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.song-pdf-page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface-solid) 76%, #000 24%);
+}
+
+.song-pdf-file-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.song-pdf-file-header span {
+  overflow: hidden;
+  margin-right: auto;
+  color: var(--text-soft);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-pdf-frame {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
+.song-pdf-load-status {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  min-height: 0;
+  padding: 1rem;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.song-pdf-image-viewport {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #fff;
+  overscroll-behavior: contain;
+}
+
+.song-pdf-image-stage {
+  display: block;
+  flex: 0 0 auto;
+  margin: auto;
+}
+
+.song-pdf-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+
+.song-pdf-empty {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+  color: var(--text-soft);
+}
+
+@media (max-width: 640px) {
+  .song-pdf-backdrop {
+    padding: 0;
+  }
+
+  .song-pdf-viewer {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    padding: 0.65rem;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .song-pdf-header {
+    flex-wrap: wrap;
+  }
+
+  .song-pdf-pages {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+
+  .song-pdf-page {
+    min-height: 72vh;
+    flex: 0 0 72vh;
+  }
 }
 
 .guitar-file-item {
@@ -1920,14 +2448,22 @@ textarea {
   background: color-mix(in srgb, var(--surface-solid) 80%, transparent);
 }
 
+.heatmap-weekdays,
 .heatmap {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.4rem;
 }
 
+.heatmap-weekdays {
+  color: var(--text-soft);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
 .heat-cell {
   appearance: none;
+  position: relative;
   display: grid;
   place-items: center;
   padding: 0;
@@ -1988,6 +2524,17 @@ textarea {
   line-height: 1;
 }
 
+.heat-cell-sick-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--surface-solid);
+  border-radius: 50%;
+  background: var(--danger);
+}
+
 .heatmap-key {
   display: flex;
   flex-wrap: wrap;
@@ -2013,6 +2560,23 @@ textarea {
   flex-shrink: 0;
 }
 
+.heatmap-key-swatch.sick-marker {
+  position: relative;
+  background: color-mix(in srgb, var(--surface-solid) 62%, transparent);
+}
+
+.heatmap-key-swatch.sick-marker::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--surface-solid);
+  border-radius: 50%;
+  background: var(--danger);
+}
+
 .heatmap-detail {
   min-height: 3rem;
   display: grid;
@@ -2025,6 +2589,10 @@ textarea {
 .heatmap-detail strong {
   color: var(--text);
   font-size: 0.88rem;
+}
+
+.heatmap-sick-detail {
+  color: var(--danger);
 }
 
 /* ── BAR CHARTS ──────────────────────────────────────────── */
@@ -2260,215 +2828,6 @@ textarea {
 .settings-module-stack {
   display: grid;
   gap: 1rem;
-}
-
-/* ── FINANCE ─────────────────────────────────────────────── */
-
-.finance-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-}
-
-.finance-panel-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-}
-
-.finance-left-column,
-.finance-chart-card,
-.finance-subscriptions-card,
-.finance-expenses-card {
-  display: grid;
-  gap: 1rem;
-}
-
-.finance-header {
-  align-items: start;
-}
-
-.finance-header p,
-.finance-chart-card p,
-.finance-expense-main span,
-.finance-expense-meta span {
-  margin: 0.35rem 0 0;
-  color: var(--text-soft);
-}
-
-.finance-month-switcher {
-  display: inline-flex;
-  gap: 0.55rem;
-}
-
-.finance-entry-form {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.finance-page select {
-  appearance: none;
-  -webkit-appearance: none;
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position:
-    calc(100% - 1.15rem) calc(50% - 0.14rem),
-    calc(100% - 0.82rem) calc(50% - 0.14rem);
-  background-size: 0.4rem 0.4rem, 0.4rem 0.4rem;
-  background-repeat: no-repeat;
-  padding-right: 3rem;
-}
-
-.finance-entry-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.finance-subscription-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.finance-entry-actions {
-  justify-content: flex-start;
-}
-
-.finance-list-header {
-  margin-top: 0.25rem;
-  margin-bottom: 0;
-}
-
-.finance-expense-list {
-  display: grid;
-  gap: 0.7rem;
-}
-
-.finance-subscription-list {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.finance-wishlist-card {
-  display: grid;
-  gap: 1rem;
-}
-
-.finance-wishlist-form {
-  display: grid;
-}
-
-.finance-wishlist-table-shell {
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface-solid) 70%, transparent);
-}
-
-.finance-wishlist-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 780px;
-}
-
-.finance-wishlist-table th,
-.finance-wishlist-table td {
-  padding: 0.8rem 0.9rem;
-  text-align: left;
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-}
-
-.finance-wishlist-table th {
-  color: var(--accent-strong);
-  font-size: 0.68rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  font-weight: 700;
-  background: color-mix(in srgb, var(--surface-solid) 85%, transparent);
-}
-
-.finance-wishlist-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.finance-wishlist-table td input {
-  border: 0;
-  border-radius: var(--radius-sm);
-  padding: 0.72rem 0.82rem;
-  background: color-mix(in srgb, var(--surface) 65%, transparent);
-  box-shadow: none;
-}
-
-.finance-wishlist-table td input:focus {
-  border: 0;
-  box-shadow: inset 0 0 0 1px var(--accent-strong);
-}
-
-.finance-wishlist-entry-row td {
-  background: color-mix(in srgb, var(--surface-ink) 45%, transparent);
-}
-
-.finance-wishlist-add {
-  width: 100%;
-}
-
-.finance-wishlist-link-cell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.65rem;
-  align-items: center;
-}
-
-.finance-wishlist-link-cell .text-button {
-  white-space: nowrap;
-}
-
-.finance-wishlist-empty {
-  min-height: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 1.1rem 0.3rem;
-}
-
-.finance-category-stack {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.finance-expense-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 0.85rem;
-  align-items: center;
-  padding: 0.9rem 0.95rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
-}
-
-.finance-expense-main,
-.finance-expense-meta {
-  display: grid;
-}
-
-.finance-expense-meta {
-  text-align: right;
-}
-
-.finance-expense-main strong,
-.finance-expense-meta strong {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.finance-subscription-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 0.85rem;
-  align-items: center;
-  padding: 0.9rem 0.95rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--surface-solid) 72%, transparent);
 }
 
 /* ── NETWORKING ──────────────────────────────────────────── */
@@ -3471,9 +3830,7 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .settings-grid,
-  .finance-grid,
-  .finance-panel-grid {
+  .settings-grid {
     grid-template-columns: 1fr;
   }
 
@@ -4401,6 +4758,12 @@ textarea {
   white-space: nowrap;
 }
 
+.habit-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
 .habits-grid {
   display: flex;
   flex-direction: column;
@@ -4421,6 +4784,34 @@ textarea {
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface-solid) 70%, transparent);
+}
+
+.sick-day-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0 0.6rem;
+  flex: 0 0 auto;
+  color: var(--text-soft);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sick-day-button:hover,
+.sick-day-button.active {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 38%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.sick-day-notice {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
 }
 
 /* ═══════════════════════════════════════════════════════════════════

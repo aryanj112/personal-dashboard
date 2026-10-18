@@ -2,10 +2,8 @@
 
 ## What this is
 
-The `tracked_companies` table in `backend/data/personal.db` is the single source of truth for:
+The `tracked_companies` table in `backend/data/personal.db` is the source of truth for:
 
-- the internships company sidebar
-- internship scraping configuration
 - Settings → Company list management
 - the generated cowork-text export used outside the app
 
@@ -18,7 +16,6 @@ If an agent needs to change company-related behavior, this table and its surroun
 | `backend/personal_api/core/db.py` | Schema plus `DEFAULT_TRACKED_COMPANIES` seed list |
 | `backend/personal_api/services/companies.py` | CRUD and cowork-text generation |
 | `backend/personal_api/routers/companies.py` | Company REST API |
-| `backend/personal_api/services/internships.py` | Internship sidebar + fetch behavior that consumes tracked companies |
 | `backend/data/companies_cowork.txt` | Generated export file |
 | `frontend/src/lib/types.ts` | `Company` frontend type |
 | `frontend/src/lib/api.ts` | Company-related client helpers |
@@ -65,16 +62,8 @@ is_active, last_fetched_at, last_fetch_error, created_at, updated_at, category
 
 Notes:
 
-- `source_type` is one of `greenhouse`, `lever`, `workday`, `tesla`, or `none`
-- `source_type = 'none'` means the company stays in the unified list but is excluded from internship fetching
+- `source_type` and `source_key` are retained company metadata; no internship fetch service is mounted
 - `category` is free-form and powers both UI grouping and cowork-text grouping
-- `role_focus` currently defaults to `internships`
-
-## Important Behavior
-
-### Internship Relationship
-
-The internships page only lists active companies where `source_type != 'none'`. A company can exist in Settings and the cowork export without participating in internship scraping.
 
 ### Cowork Text Generation
 
@@ -82,7 +71,6 @@ Every create, update, or delete operation rewrites `backend/data/companies_cowor
 
 ### Frontend Ordering
 
-The internships page stores favorites and company ordering in localStorage, not in SQLite. Adding a company in the backend does not reset the user's saved sidebar arrangement; new companies are appended when the frontend reconciles saved IDs with live IDs.
 
 ## Adding A New Company
 
@@ -105,13 +93,3 @@ Tuple order:
 ```
 
 Appending is safer than inserting into the middle because the frontend preserves its own ordering separately.
-
-## Supported Fetch Paths
-
-- `greenhouse`: `https://boards-api.greenhouse.io/v1/boards/{source_key}/jobs`
-- `lever`: `https://api.lever.co/v0/postings/{source_key}?mode=json`
-- `workday`: Workday CXS API flow driven by the `tenant/wdN/SiteName` source key
-- `tesla`: custom Camoufox-backed fetch path
-- `none`: no internship fetch path
-
-For Tesla-specific context, see `TESLA_SCRAPER_CONTEXT.md`.

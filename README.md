@@ -2,7 +2,7 @@
 
 Local-first life dashboard with a React frontend, a FastAPI backend, and a single SQLite database.
 
-The app started as a habit tracker and now covers daily planning, guitar/workout logging, networking follow-ups, internship sourcing, finance tracking, reflection prompts, and LaTeX resume tailoring.
+The app covers daily planning, guitar/workout logging, networking follow-ups, and LaTeX resume tailoring.
 
 ## Product Surface
 
@@ -11,11 +11,8 @@ The app started as a habit tracker and now covers daily planning, guitar/workout
 - `Guitar`: session logging, materials, song groups, PDF uploads, and CAGED helpers
 - `Workouts`: session logging, run tracking, rest days, and history editing
 - `Networking`: contacts, interactions, follow-ups, and outreach queue management
-- `Internships`: tracked companies, job-board fetches, manual buckets, and AI summaries
-- `Finance`: monthly expenses, subscriptions, wishlist items, and category management
-- `Reflection`: quotes, prompts, questions, videos, and local journaling fields
 - `Resume`: local LaTeX editing, backend PDF compilation, and inline preview/export
-- `Settings`: theme/preferences plus habits, companies, finance categories, sections, and option lists
+- `Settings`: theme/preferences plus habits, tracked companies, sections, and option lists
 
 ## Repo Map
 
@@ -39,11 +36,10 @@ The app started as a habit tracker and now covers daily planning, guitar/workout
 │   │   ├── components/            # Shared UI and detail editors
 │   │   ├── lib/                   # API client, types, and helpers
 │   │   ├── pages/                 # Route-level pages
-│   │   └── styles/                # Active and legacy themes
+│   │   └── styles/                # Active UI stylesheet and style notes
 │   └── package.json
 ├── COMPANY_LIST_CONTEXT.md        # Detailed note for tracked companies/cowork text
-├── TESLA_SCRAPER_CONTEXT.md       # Detailed note for the Tesla scraper
-├── run-dev.sh                     # Starts backend, frontend, and local Ollama when available
+├── run-dev.sh                     # Starts backend and frontend
 └── session.md                     # Product narrative / project history
 ```
 
@@ -87,7 +83,6 @@ Then open [http://127.0.0.1:5173](http://127.0.0.1:5173).
 - The frontend is hardcoded to talk to `http://127.0.0.1:8000` in `frontend/src/lib/api.ts`.
 - Guitar song file uploads require `python-multipart`.
 - Resume compilation requires a working `pdflatex` installation on the machine running the backend.
-- Internship AI summaries call a local Ollama server when available; failures degrade gracefully to an empty summary.
 
 ## Docs
 

@@ -8,7 +8,6 @@ These components are reused across multiple pages or encapsulate a focused editi
 
 - top navigation shell
 - route buttons and active-page framing
-- finance/reflection nav visibility gating
 
 ### `Charts.tsx`
 
@@ -18,7 +17,7 @@ These components are reused across multiple pages or encapsulate a focused editi
 - `DistributionPieChart`
 - `Heatmap`
 
-Used primarily by Dashboard, Guitar, Workouts, and Finance.
+Used primarily by Dashboard, Guitar, and Workouts.
 
 ### `HabitSessionDetails.tsx`
 

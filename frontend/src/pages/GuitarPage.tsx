@@ -1,128 +1,164 @@
 import { motion } from "framer-motion";
-import { ChevronDown, ChevronLeft, ChevronRight, FileText, Minus, Plus, Trash2 } from "lucide-react";
-import { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useState } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, FileText, GripVertical, Minus, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { ChangeEvent, DragEvent as ReactDragEvent, FormEvent, Fragment, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { WeeklyPieChart } from "../components/Charts";
 import { API_BASE, api } from "../lib/api";
+import {
+  CAGED_CHORDS,
+  CAGED_KEYS,
+  type CagedChordPosition,
+  type CagedChordType,
+  type ChordFret,
+} from "../lib/cagedChords";
+import { chordDegreeLabels } from "../lib/chordDegrees";
 import { getCurrentWeekBounds, getCurrentWeekRangeLabel } from "../lib/dates";
 import type { GuitarResponse } from "../lib/types";
 
 // ── Chord diagram ────────────────────────────────────────────────
-type ChordValue = "x" | "o" | 1 | 2 | 3 | 4;
-type CagedShape = "C" | "A" | "G" | "E" | "D";
-type CagedPosition = { shape: CagedShape; startFret: number; chord: ChordValue[] };
+type ChordValue = ChordFret;
+type CagedPosition = CagedChordPosition;
+const KEY_LABELS = CAGED_KEYS;
+const CAGED_ROOT_INDICES = [0, 9, 7, 4, 2];
 
-const KEY_LABELS = ["C","C#/D♭","D","D#/E♭","E","F","F#/G♭","G","G#/A♭","A","A#/B♭","B"];
+function useChordRootNavigation() {
+  const [cagedOnly, setCagedOnly] = useState(false);
+  const [rootPosition, setRootPosition] = useState(0);
+  const rootIndices = cagedOnly ? CAGED_ROOT_INDICES : KEY_LABELS.map((_, index) => index);
+  const keyIdx = rootIndices[rootPosition] ?? 0;
 
-// Root fret per string for each key (index = semitone from C)
-const ROOT_ON_E = [8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7];
-const ROOT_ON_A = [3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 1, 2];
-const ROOT_ON_D = [10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  return {
+    cagedOnly,
+    keyIdx,
+    rootIndices,
+    moveRoot: (amount: number) => {
+      setRootPosition((position) => (position + amount + rootIndices.length) % rootIndices.length);
+    },
+    selectRoot: (position: number) => setRootPosition(position),
+    toggleCagedOnly: () => {
+      setRootPosition(0);
+      setCagedOnly((current) => !current);
+    },
+  };
+}
 
-// ── Data-driven chord type registry ─────────────────────────
-// open*: natural open-position voicing (used when root lands there naturally)
-// tmpl*: barre template (relative frets, 1 = startFret)
-// To add a new chord type, push a new entry to CHORD_TYPES below.
+type NoteLetter = "C" | "D" | "E" | "F" | "G" | "A" | "B";
+type Accidental = -1 | 0 | 1;
+type TheoryNote = { letter: NoteLetter; accidental: Accidental; pitchClass: number };
+type TheoryQuestion = { root: TheoryNote; target: TheoryNote; quality: "major" | "minor" };
+
+const NOTE_LETTERS: NoteLetter[] = ["C", "D", "E", "F", "G", "A", "B"];
+const NATURAL_PITCH_CLASSES: Record<NoteLetter, number> = {
+  C: 0,
+  D: 2,
+  E: 4,
+  F: 5,
+  G: 7,
+  A: 9,
+  B: 11,
+};
+
+function normalizePitchClass(value: number) {
+  return (value + 12) % 12;
+}
+
+function getAccidentalForPitchClass(pitchClass: number, letter: NoteLetter): Accidental | null {
+  const distance = ((pitchClass - NATURAL_PITCH_CLASSES[letter] + 18) % 12) - 6;
+  return distance >= -1 && distance <= 1 ? distance as Accidental : null;
+}
+
+function formatTheoryNote(note: Pick<TheoryNote, "letter" | "accidental">) {
+  const accidental = note.accidental === -1 ? "♭" : note.accidental === 1 ? "♯" : "";
+  return `${note.letter}${accidental}`;
+}
+
+function createTheoryQuestion(): TheoryQuestion {
+  const questions: TheoryQuestion[] = [];
+
+  for (const quality of ["major", "minor"] as const) {
+    const semitones = quality === "major" ? 4 : 3;
+    for (const letter of NOTE_LETTERS) {
+      for (const accidental of [-1, 0, 1] as Accidental[]) {
+        const rootPitchClass = normalizePitchClass(NATURAL_PITCH_CLASSES[letter] + accidental);
+        const targetLetter = NOTE_LETTERS[(NOTE_LETTERS.indexOf(letter) + 2) % NOTE_LETTERS.length];
+        const targetPitchClass = normalizePitchClass(rootPitchClass + semitones);
+        const targetAccidental = getAccidentalForPitchClass(targetPitchClass, targetLetter);
+
+        if (targetAccidental !== null) {
+          questions.push({
+            quality,
+            root: { letter, accidental, pitchClass: rootPitchClass },
+            target: { letter: targetLetter, accidental: targetAccidental, pitchClass: targetPitchClass },
+          });
+        }
+      }
+    }
+  }
+
+  return questions[Math.floor(Math.random() * questions.length)];
+}
+
 type ChordTypeConfig = {
-  id: string;
+  id: CagedChordType;
   label: string;
   nameFn: (key: string) => string;
-  openE?: ChordValue[]; openA?: ChordValue[]; openG?: ChordValue[];
-  openC?: ChordValue[]; openD?: ChordValue[];
-  tmplE: ChordValue[]; tmplA: ChordValue[]; tmplG: ChordValue[];
-  tmplC: ChordValue[]; tmplD: ChordValue[];
+  /** Semitones above the root. Degree labels are derived from this. */
+  intervals: number[];
 };
 
 const CHORD_TYPES: ChordTypeConfig[] = [
-  {
-    id: "major", label: "Major", nameFn: (k) => `${k} Major`,
-    openE: ["o", 2, 2, 1, "o", "o"],
-    openA: ["x", "o", 2, 2, 2, "o"],
-    openG: [3, 2, "o", "o", "o", 3],
-    openC: ["x", 3, 2, "o", 1, "o"],
-    openD: ["x", "x", "o", 2, 3, 2],
-    tmplE: [1, 3, 3, 2, 1, 1],
-    tmplA: ["x", 1, 3, 3, 3, 1],
-    tmplG: [4, 3, 1, 1, 1, 4],
-    tmplC: ["x", 4, 3, 1, 2, 1],
-    tmplD: ["x", "x", 1, 3, 4, 3],
-  },
-  {
-    id: "m7", label: "m7", nameFn: (k) => `${k}m7`,
-    openE: ["o", 2, 2, "o", "o", "o"],
-    openA: ["x", "o", 2, "o", 1, "o"],
-    openD: ["x", "x", "o", 2, 1, 1],
-    tmplE: [1, 3, 3, 1, 1, 1],
-    tmplA: ["x", 1, 3, 1, 2, 1],
-    tmplG: [3, 1, 1, 1, 1, 3],
-    tmplC: ["x", 3, 1, 1, 1, 1],
-    tmplD: ["x", "x", 1, 3, 2, 2],
-  },
-  {
-    id: "dom7", label: "7", nameFn: (k) => `${k}7`,
-    openE: ["o", 2, "o", 1, "o", "o"],
-    openA: ["x", "o", 2, "o", 2, "o"],
-    openG: [3, 2, "o", "o", "o", 1],
-    openC: ["x", 3, 2, 3, 1, "o"],
-    openD: ["x", "x", "o", 2, 1, 2],
-    tmplE: [1, 3, 1, 2, 1, 1],
-    tmplA: ["x", 1, 3, 1, 3, 1],
-    tmplG: [4, 3, 1, 2, 1, 2],
-    tmplC: ["x", 3, 2, 3, 1, 1],
-    tmplD: ["x", "x", 1, 3, 2, 3],
-  },
-  {
-    id: "maj7", label: "maj7", nameFn: (k) => `${k}maj7`,
-    openE: ["o", 2, 1, 1, "o", "o"],
-    openA: ["x", "o", 2, 1, 2, "o"],
-    openG: [3, 2, "o", "o", "o", 2],
-    openC: ["x", 3, 2, "o", "o", "o"],
-    openD: ["x", "x", "o", 2, 2, 2],
-    tmplE: [1, 3, 2, 2, 1, 1],
-    tmplA: ["x", 1, 3, 2, 3, 1],
-    tmplG: [4, 3, 1, 1, 1, 3],
-    tmplC: ["x", 4, 3, 1, 1, 1],
-    tmplD: ["x", "x", 1, 3, 3, 3],
-  },
+  { id: "major", label: "Major", nameFn: (key) => `${key} Major`, intervals: [0, 4, 7] },
+  { id: "minor", label: "Minor", nameFn: (key) => `${key} Minor`, intervals: [0, 3, 7] },
+  { id: "m7", label: "m7", nameFn: (key) => `${key}m7`, intervals: [0, 3, 7, 10] },
+  { id: "dom7", label: "7", nameFn: (key) => `${key}7`, intervals: [0, 4, 7, 10] },
+  { id: "maj7", label: "maj7", nameFn: (key) => `${key}maj7`, intervals: [0, 4, 7, 11] },
+  { id: "m7b5", label: "m7♭5", nameFn: (key) => `${key}m7♭5`, intervals: [0, 3, 6, 10] },
 ];
 
-function getPositions(keyIdx: number, cfg: ChordTypeConfig): CagedPosition[] {
-  const rE = ROOT_ON_E[keyIdx];
-  const rA = ROOT_ON_A[keyIdx];
-  const rD = ROOT_ON_D[keyIdx];
+function getChordPositions(keyIdx: number, chordType: CagedChordType): readonly CagedPosition[] {
+  return CAGED_CHORDS[chordType][KEY_LABELS[keyIdx]];
+}
 
-  const ePos: CagedPosition = rE === 0 && cfg.openE
-    ? { shape: "E", startFret: 1, chord: cfg.openE }
-    : { shape: "E", startFret: rE === 0 ? 12 : rE, chord: cfg.tmplE };
+/**
+ * A chord name that reveals the chord's scale degrees on hover/focus. Every
+ * chord browser uses this, so the degrees stay consistent across chord types.
+ */
+function ChordNameWithDegrees({
+  name,
+  intervals,
+  tooltipId,
+  className,
+}: {
+  name: string;
+  intervals: number[];
+  tooltipId: string;
+  className: string;
+}) {
+  // Stacked like the chord sounds: root on the bottom, each degree above it.
+  const stacked = chordDegreeLabels(intervals)
+    .map((degree, index) => ({ degree, semitone: intervals[index] }))
+    .reverse();
 
-  const aPos: CagedPosition = rA === 0 && cfg.openA
-    ? { shape: "A", startFret: 1, chord: cfg.openA }
-    : { shape: "A", startFret: rA === 0 ? 12 : rA, chord: cfg.tmplA };
-
-  const dPos: CagedPosition = rD === 0 && cfg.openD
-    ? { shape: "D", startFret: 1, chord: cfg.openD }
-    : { shape: "D", startFret: rD === 0 ? 12 : rD, chord: cfg.tmplD };
-
-  const gSF = (rE - 3 + 12) % 12;
-  const gPos: CagedPosition = rE === 3 && cfg.openG
-    ? { shape: "G", startFret: 1, chord: cfg.openG }
-    : { shape: "G", startFret: gSF === 0 ? 12 : gSF, chord: cfg.tmplG };
-
-  const cSF = (rA - 3 + 12) % 12;
-  const cPos: CagedPosition = rA === 3 && cfg.openC
-    ? { shape: "C", startFret: 1, chord: cfg.openC }
-    : { shape: "C", startFret: cSF === 0 ? 12 : cSF, chord: cfg.tmplC };
-
-  return [ePos, aPos, dPos, gPos, cPos].sort((a, b) => a.startFret - b.startFret);
+  return (
+    <span className={`${className} chord-row-type-label-tooltip`} tabIndex={0} aria-describedby={tooltipId}>
+      {name}
+      <span id={tooltipId} role="tooltip" className="chord-row-interval-tooltip">
+        {stacked.map(({ degree, semitone }) => (
+          <span key={`${tooltipId}-${semitone}`}>{degree}</span>
+        ))}
+      </span>
+    </span>
+  );
 }
 
 // SVG metrics
 const CD_W = 210;
-const CD_H = 238;
+const CD_H = 278;
 const CD_START_X = 30;
 const CD_S_SPACE = 28;
 const CD_NUT_Y = 58;
 const CD_FRET_H = 40;
-const CD_NUM_FRETS = 4;
+const CD_NUM_FRETS = 5;
 const CD_DOT_R = 9;
 const CD_IND_Y = 28;
 function cdStringX(s: number) { return CD_START_X + s * CD_S_SPACE; }
@@ -150,6 +186,8 @@ export function GuitarPage({
   });
   const [showWeekSessions, setShowWeekSessions] = useState(false);
   const [openMaterials, setOpenMaterials] = useState<Record<number, boolean>>({});
+  const dateSessions = data.sessions.filter((session) => session.session_date === form.date);
+  const existingDateSession = dateSessions[0] ?? null;
   const deltaBluesGroup =
     data.song_groups.find((group) => group.name.trim().toLowerCase() === "delta blues") ?? null;
   const weekRangeLabel = getCurrentWeekRangeLabel();
@@ -164,7 +202,6 @@ export function GuitarPage({
     await api.createSession("guitar", {
       date: form.date,
       duration_minutes: 0,
-      notes: "",
       section_ids: form.section_ids,
     });
     setForm({
@@ -196,9 +233,19 @@ export function GuitarPage({
               <input
                 type="date"
                 value={form.date}
-                onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
+                onChange={(event) => {
+                  const date = event.target.value;
+                  const sections = data.sessions
+                    .filter((session) => session.session_date === date)
+                    .flatMap((session) => session.sections.map((section) => section.id));
+                  setForm({ date, section_ids: [...new Set(sections)] });
+                }}
               />
             </label>
+
+            {existingDateSession ? (
+              <p className="field-caption">Add practice areas to your existing session</p>
+            ) : null}
 
             <div className="field-group">
               <div className="chip-grid">
@@ -227,7 +274,7 @@ export function GuitarPage({
 
             <button type="submit" className="primary-button">
               <Plus size={16} />
-              Save session
+              {existingDateSession ? "Add to session" : "Save session"}
             </button>
           </form>
         </motion.section>
@@ -249,29 +296,27 @@ export function GuitarPage({
         </motion.section>
       </div>
 
-      <motion.section className="surface-card" {...panelReveal}>
-        <div className="surface-header">
-          <div>
-            <h3>Current material</h3>
-          </div>
-        </div>
+      <motion.section className="guitar-material-section" {...panelReveal}>
+        <h3 className="guitar-material-heading">Current material</h3>
 
         <div className="guitar-material-list">
           {data.materials.map((material) => (
-            <MaterialRow
-              key={material.id}
-              material={material}
-              deltaBluesGroup={deltaBluesGroup}
-              songGroups={data.song_groups}
-              open={Boolean(openMaterials[material.id])}
-              onToggle={() =>
-                setOpenMaterials((current) => ({
-                  ...current,
-                  [material.id]: !current[material.id],
-                }))
-              }
-              onRefresh={onRefresh}
-            />
+            <Fragment key={material.id}>
+              <MaterialRow
+                material={material}
+                deltaBluesGroup={deltaBluesGroup}
+                songGroups={data.song_groups}
+                open={Boolean(openMaterials[material.id])}
+                onToggle={() =>
+                  setOpenMaterials((current) => ({
+                    ...current,
+                    [material.id]: !current[material.id],
+                  }))
+                }
+                onRefresh={onRefresh}
+              />
+              {material.title.trim().toLowerCase() === "arps" ? <TheoryMaterial /> : null}
+            </Fragment>
           ))}
         </div>
       </motion.section>
@@ -295,12 +340,12 @@ export function GuitarPage({
         {showWeekSessions ? (
           <div className="toggle-panel session-list">
             {thisWeekSessions.map((session) => (
-              <div key={session.id} className="session-card">
-                <div>
-                  <strong>{formatSessionDate(session.session_date)}</strong>
-                  <p>{session.sections.map((section) => section.name).join(", ") || "No type"}</p>
-                </div>
-              </div>
+              <GuitarWeekSessionCard
+                key={session.id}
+                session={session}
+                sections={data.sections}
+                onRefresh={onRefresh}
+              />
             ))}
             {thisWeekSessions.length === 0 ? (
               <div className="empty-state">
@@ -311,6 +356,98 @@ export function GuitarPage({
         ) : null}
       </motion.section>
     </section>
+  );
+}
+
+function GuitarWeekSessionCard({
+  session,
+  sections,
+  onRefresh,
+}: {
+  session: GuitarResponse["sessions"][number];
+  sections: GuitarResponse["sections"];
+  onRefresh: () => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [sectionIds, setSectionIds] = useState(session.sections.map((section) => section.id));
+  const [saving, setSaving] = useState(false);
+
+  function startEditing() {
+    setSectionIds(session.sections.map((section) => section.id));
+    setEditing(true);
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await api.updateSession("guitar", session.id, {
+        date: session.session_date,
+        duration_minutes: session.duration_minutes,
+        section_ids: sectionIds,
+      });
+      setEditing(false);
+      await onRefresh();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="session-card session-card-editor">
+        <strong>{formatSessionDate(session.session_date)}</strong>
+        <div className="field-group">
+          <span className="field-caption">Practice areas</span>
+          <div className="chip-grid">
+            {sections.map((section) => {
+              const active = sectionIds.includes(section.id);
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  className={`chip ${active ? "active" : ""}`}
+                  onClick={() => setSectionIds((current) => (
+                    active
+                      ? current.filter((id) => id !== section.id)
+                      : [...current, section.id]
+                  ))}
+                >
+                  {section.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="editor-actions">
+          <button className="secondary-button" type="button" onClick={() => setEditing(false)} disabled={saving}>
+            <X size={16} />
+            Cancel
+          </button>
+          <button className="primary-button" type="button" onClick={() => void save()} disabled={saving}>
+            <Check size={16} />
+            {saving ? "Saving..." : "Save changes"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="session-card">
+      <div>
+        <strong>{formatSessionDate(session.session_date)}</strong>
+        <p>{session.sections.map((section) => section.name).join(", ") || "No type"}</p>
+      </div>
+      <button
+        type="button"
+        className="icon-button"
+        onClick={startEditing}
+        aria-label={`Edit guitar practice for ${formatSessionDate(session.session_date)}`}
+        title="Edit practice"
+      >
+        <Pencil size={15} />
+      </button>
+    </div>
   );
 }
 
@@ -345,6 +482,9 @@ function MaterialRow({
   const isCagedMaterial = material.title.trim().toLowerCase() === "caged";
   const isDeltaBluesMaterial = material.title.trim().toLowerCase() === "delta blues";
   const isSongsMaterial = material.title.trim().toLowerCase() === "songs";
+  const isNotesFreeMaterial = ["arps", "ear training", "speed sequences"].includes(
+    material.title.trim().toLowerCase(),
+  );
 
   async function saveMaterial() {
     const nextNotes = isClassicalMaterial
@@ -396,8 +536,10 @@ function MaterialRow({
             </div>
           ) : isCagedMaterial ? (
             <div className="guitar-caged-grid">
-              <h4 className="caged-section-header">Regular</h4>
+              <h4 className="caged-section-header">Major</h4>
               <MajorBrowser />
+              <h4 className="caged-section-header">Minor</h4>
+              <MinorBrowser />
               <h4 className="caged-section-header">7ths</h4>
               <SeventhsBrowser />
             </div>
@@ -408,7 +550,7 @@ function MaterialRow({
             />
           ) : isSongsMaterial ? (
             <SongsMaterial groups={songGroups} onRefresh={onRefresh} />
-          ) : (
+          ) : isNotesFreeMaterial ? null : (
             <label>
               <span className="metric-label">Notes</span>
               <textarea
@@ -421,7 +563,7 @@ function MaterialRow({
             </label>
           )}
 
-          {isDeltaBluesMaterial || isSongsMaterial || isClassicalMaterial || isCagedMaterial ? null : (
+          {isDeltaBluesMaterial || isSongsMaterial || isClassicalMaterial || isCagedMaterial || isNotesFreeMaterial ? null : (
             <div className="editor-actions">
               <button className="secondary-button" type="button" onClick={() => void saveMaterial()}>
                 Save notes
@@ -431,6 +573,152 @@ function MaterialRow({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function TheoryMaterial() {
+  const [open, setOpen] = useState(false);
+  const [question, setQuestion] = useState(() => createTheoryQuestion());
+  const [selectedLetter, setSelectedLetter] = useState<NoteLetter | null>(null);
+  const [selectedAccidental, setSelectedAccidental] = useState<Accidental | null>(null);
+  const [result, setResult] = useState<"correct" | "incorrect" | null>(null);
+  const [score, setScore] = useState({ correct: 0, attempted: 0 });
+
+  function clearAnswer() {
+    setSelectedLetter(null);
+    setSelectedAccidental(null);
+    setResult(null);
+  }
+
+  function showNextQuestion() {
+    setQuestion(createTheoryQuestion());
+    clearAnswer();
+  }
+
+  function submitAnswer() {
+    if (selectedLetter === null || selectedAccidental === null) {
+      return;
+    }
+
+    const isCorrect =
+      selectedLetter === question.target.letter && selectedAccidental === question.target.accidental;
+    setScore((current) => ({
+      correct: current.correct + (isCorrect ? 1 : 0),
+      attempted: current.attempted + 1,
+    }));
+    setResult(isCorrect ? "correct" : "incorrect");
+  }
+
+  function restartScore() {
+    setScore({ correct: 0, attempted: 0 });
+    showNextQuestion();
+  }
+
+  return (
+    <section className="surface-card guitar-material-card guitar-theory-card">
+      <div className="theory-card-header">
+        <button
+          type="button"
+          className="surface-toggle theory-toggle"
+          aria-expanded={open}
+          aria-controls="guitar-theory-quiz"
+          onClick={() => setOpen((current) => !current)}
+        >
+          <h3>Theory</h3>
+          <ChevronDown className={open ? "open" : ""} size={18} />
+        </button>
+      </div>
+
+      {open ? (
+        <>
+          <div className="theory-card-header theory-expanded-header">
+            <div className="theory-score">
+              <span>Score</span>
+              <strong>{score.correct} / {score.attempted}</strong>
+            </div>
+            <button
+              type="button"
+              className="icon-button subtle"
+              onClick={restartScore}
+              aria-label="Restart score"
+              title="Restart score"
+            >
+              <RotateCcw size={15} />
+            </button>
+          </div>
+          <div className="theory-quiz" id="guitar-theory-quiz">
+        <div className="theory-question">
+          <span>What note is a {question.quality} 3rd above</span>
+          <strong>{formatTheoryNote(question.root)}?</strong>
+        </div>
+
+        <div className="theory-choice-group">
+          <span className="field-caption">Note</span>
+          <div className="theory-note-choices">
+            {NOTE_LETTERS.map((letter) => (
+              <button
+                key={letter}
+                type="button"
+                className={`theory-choice${selectedLetter === letter ? " active" : ""}`}
+                aria-pressed={selectedLetter === letter}
+                disabled={result !== null}
+                onClick={() => setSelectedLetter(letter)}
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="theory-choice-group">
+          <span className="field-caption">Accidental</span>
+          <div className="theory-accidental-choices">
+            {([
+              [-1, "♭", "Flat"],
+              [0, "♮", "Natural"],
+              [1, "♯", "Sharp"],
+            ] as const).map(([accidental, symbol, label]) => (
+              <button
+                key={label}
+                type="button"
+                className={`theory-choice theory-accidental-choice${selectedAccidental === accidental ? " active" : ""}`}
+                aria-label={label}
+                aria-pressed={selectedAccidental === accidental}
+                disabled={result !== null}
+                onClick={() => setSelectedAccidental(accidental)}
+              >
+                {symbol}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {result ? (
+          <div className={`theory-result ${result}`}>
+            {result === "correct" ? "Correct." : `Answer: ${formatTheoryNote(question.target)}.`}
+          </div>
+        ) : null}
+
+        <div className="theory-actions">
+          {result ? (
+            <button type="button" className="primary-button" onClick={showNextQuestion}>
+              Next question
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="primary-button"
+              disabled={selectedLetter === null || selectedAccidental === null}
+              onClick={submitAnswer}
+            >
+              Submit
+            </button>
+          )}
+        </div>
+          </div>
+        </>
+      ) : null}
+    </section>
   );
 }
 
@@ -501,16 +789,7 @@ function SongGroupBrowser({
         <h4>{group.name}</h4>
       </div>
 
-      <div className="guitar-delta-song-grid">
-        {group.songs.map((song) => (
-          <DeltaBluesSongCard key={song.id} song={song} onRefresh={onRefresh} />
-        ))}
-      </div>
-      {group.songs.length === 0 ? (
-        <div className="empty-state">
-          <h4>No songs here yet.</h4>
-        </div>
-      ) : null}
+      <SortableSongGrid group={group} onRefresh={onRefresh} />
 
       <form className="task-entry guitar-delta-entry" onSubmit={submitSong}>
         <input
@@ -562,17 +841,7 @@ function DeltaBluesMaterial({
 
   return (
     <div className="guitar-delta-grid">
-      <div className="guitar-delta-song-grid">
-        {group.songs.map((song) => (
-          <DeltaBluesSongCard key={song.id} song={song} onRefresh={onRefresh} />
-        ))}
-      </div>
-      {group.songs.length === 0 ? (
-        <div className="empty-state">
-          <h4>No delta blues songs yet.</h4>
-        </div>
-      ) : null}
-
+      <SortableSongGrid group={group} onRefresh={onRefresh} />
       <form className="task-entry guitar-delta-entry" onSubmit={submitSong}>
         <input
           value={title}
@@ -588,115 +857,482 @@ function DeltaBluesMaterial({
   );
 }
 
-function DeltaBluesSongCard({
-  song,
+function SortableSongGrid({
+  group,
   onRefresh,
 }: {
-  song: GuitarResponse["song_groups"][number]["songs"][number];
+  group: GuitarResponse["song_groups"][number];
   onRefresh: () => Promise<void>;
 }) {
-  const [uploading, setUploading] = useState(false);
+  const [songs, setSongs] = useState(group.songs);
+  const [draggingSongId, setDraggingSongId] = useState<number | null>(null);
+  const [dropTargetSongId, setDropTargetSongId] = useState<number | null>(null);
+  const dragSongId = useRef<number | null>(null);
 
-  async function uploadFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-    setUploading(true);
+  useEffect(() => setSongs(group.songs), [group.songs]);
+
+  function handleDragStart(event: ReactDragEvent<HTMLDivElement>, songId: number) {
+    dragSongId.current = songId;
+    setDraggingSongId(songId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(songId));
+  }
+
+  function handleDragOver(event: ReactDragEvent<HTMLDivElement>, songId: number) {
+    event.preventDefault();
+    setDropTargetSongId(songId);
+  }
+
+  async function handleDrop(event: ReactDragEvent<HTMLDivElement>, targetSongId: number) {
+    event.preventDefault();
+    const sourceSongId = dragSongId.current;
+    dragSongId.current = null;
+    setDraggingSongId(null);
+    setDropTargetSongId(null);
+    if (sourceSongId === null || sourceSongId === targetSongId) return;
+
+    const nextSongs = [...songs];
+    const sourceIndex = nextSongs.findIndex((song) => song.id === sourceSongId);
+    const targetIndex = nextSongs.findIndex((song) => song.id === targetSongId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const [movedSong] = nextSongs.splice(sourceIndex, 1);
+    nextSongs.splice(targetIndex, 0, movedSong);
+    setSongs(nextSongs);
+
     try {
-      await api.uploadGuitarSongFile(song.id, file);
-      event.target.value = "";
+      await api.reorderGuitarSongs(group.id, nextSongs.map((song) => song.id));
       await onRefresh();
-    } finally {
-      setUploading(false);
+    } catch {
+      await onRefresh();
     }
   }
 
   return (
-    <div className="guitar-delta-song-card">
-      <div className="guitar-delta-song-header">
-        <span>{song.title}</span>
-        <button
-          type="button"
-          className="icon-button subtle"
-          onClick={async () => {
-            await api.deleteGuitarSong(song.id);
-            await onRefresh();
+    <div className="guitar-delta-song-grid">
+      {songs.map((song) => (
+        <SongFileCard
+          key={song.id}
+          song={song}
+          onRefresh={onRefresh}
+          dragging={draggingSongId === song.id}
+          dropTarget={dropTargetSongId === song.id && draggingSongId !== song.id}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onDragEnd={() => {
+            dragSongId.current = null;
+            setDraggingSongId(null);
+            setDropTargetSongId(null);
           }}
-          aria-label={`Delete ${song.title}`}
-        >
-          <Trash2 size={16} />
-        </button>
-      </div>
-
-      <div className="guitar-delta-song-meta">
-        <span>{song.files.length} PDF{song.files.length === 1 ? "" : "s"}</span>
-      </div>
-
-      <label className="secondary-button guitar-upload-button">
-        <input
-          className="guitar-hidden-file-input"
-          type="file"
-          accept="application/pdf,.pdf"
-          onChange={(event) => void uploadFile(event)}
         />
-        <FileText size={16} />
-        {uploading ? "Uploading..." : "Upload PDF"}
-      </label>
-
-      {song.files.length ? (
-        <div className="guitar-delta-file-list">
-          {song.files.map((file) => (
-            <button
-              key={file.id}
-              type="button"
-              className="guitar-delta-file-pill"
-              onClick={() =>
-                window.open(
-                  `${API_BASE}/api/guitar/song-files/${file.id}`,
-                  "_blank",
-                  "noopener,noreferrer",
-                )
-              }
-            >
-              {file.display_name}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      ))}
     </div>
   );
 }
 
-function MajorBrowser() {
-  const [keyIdx, setKeyIdx] = useState(0);
-  const total = KEY_LABELS.length;
-  const cfg = CHORD_TYPES[0]; // major
-  const positions = getPositions(keyIdx, cfg);
+function SongFileCard({
+  song,
+  onRefresh,
+  dragging,
+  dropTarget,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: {
+  song: GuitarResponse["song_groups"][number]["songs"][number];
+  onRefresh: () => Promise<void>;
+  dragging: boolean;
+  dropTarget: boolean;
+  onDragStart: (event: ReactDragEvent<HTMLDivElement>, songId: number) => void;
+  onDragOver: (event: ReactDragEvent<HTMLDivElement>, songId: number) => void;
+  onDrop: (event: ReactDragEvent<HTMLDivElement>, songId: number) => void;
+  onDragEnd: () => void;
+}) {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [deletingFileId, setDeletingFileId] = useState<number | null>(null);
+  const [pageStart, setPageStart] = useState(0);
+  const [zoomPercent, setZoomPercent] = useState(100);
+  const maxPageStart = Math.max(0, Math.floor((song.files.length - 1) / 2) * 2);
 
-  function posLabel(p: CagedPosition) {
-    return p.chord.includes("o") ? `${p.shape} · open` : `${p.shape} · fr.${p.startFret}`;
+  useEffect(() => {
+    setPageStart((current) => Math.min(current, maxPageStart));
+  }, [maxPageStart]);
+
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const handleKeyDown = (event: Event) => {
+      if (!(event instanceof window.KeyboardEvent)) return;
+      if (event.key === "Escape") setViewerOpen(false);
+      if (event.key === "ArrowLeft") setPageStart((current) => Math.max(0, current - 2));
+      if (event.key === "ArrowRight") setPageStart((current) => Math.min(maxPageStart, current + 2));
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [maxPageStart, viewerOpen]);
+
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [viewerOpen]);
+
+  async function uploadFiles(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
+      return;
+    }
+    setUploading(true);
+    try {
+      for (const file of files) {
+        await api.uploadGuitarSongFile(song.id, file);
+      }
+      setPageStart(0);
+      await onRefresh();
+    } finally {
+      event.target.value = "";
+      setUploading(false);
+    }
   }
+
+  async function deleteFile(fileId: number) {
+    setDeletingFileId(fileId);
+    try {
+      await api.deleteGuitarSongFile(fileId);
+      setPageStart(0);
+      await onRefresh();
+    } finally {
+      setDeletingFileId(null);
+    }
+  }
+
+  const visibleFiles = song.files.slice(pageStart, pageStart + 2);
+
+  return (
+    <>
+      <div
+        className={`guitar-delta-song-card${dragging ? " dragging" : ""}${dropTarget ? " drop-target" : ""}`}
+        draggable
+        onDragStart={(event) => onDragStart(event, song.id)}
+        onDragOver={(event) => onDragOver(event, song.id)}
+        onDrop={(event) => void onDrop(event, song.id)}
+        onDragEnd={onDragEnd}
+      >
+        <div className="guitar-delta-song-header">
+          <div className="guitar-song-title-button">
+            <GripVertical className="guitar-song-drag-handle" size={16} aria-hidden="true" />
+            <FileText size={16} />
+            <span>{song.title}</span>
+          </div>
+        </div>
+        <div className="guitar-delta-song-actions">
+          <button
+            type="button"
+            className="secondary-button guitar-song-view-button"
+            onClick={() => {
+              setPageStart(0);
+              setZoomPercent(100);
+              setViewerOpen(true);
+            }}
+          >
+            <Eye size={15} />
+            View
+          </button>
+          <label className={`secondary-button guitar-song-card-upload${uploading ? " disabled" : ""}`}>
+            <input
+              className="guitar-hidden-file-input"
+              type="file"
+              accept="application/pdf,.pdf,image/png,.png"
+              multiple
+              disabled={uploading}
+              onChange={(event) => void uploadFiles(event)}
+            />
+            <Plus size={15} />
+            Add files
+          </label>
+          <button
+            type="button"
+            className="icon-button subtle"
+            onClick={async () => {
+              await api.deleteGuitarSong(song.id);
+              await onRefresh();
+            }}
+            aria-label={`Delete ${song.title}`}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+
+      {viewerOpen ? createPortal(
+        <div
+          className="song-pdf-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setViewerOpen(false);
+          }}
+        >
+          <section className="song-pdf-viewer" role="dialog" aria-modal="true" aria-labelledby={`song-pdf-title-${song.id}`}>
+            <header className="song-pdf-header">
+              <div className="song-pdf-heading">
+                <h3 id={`song-pdf-title-${song.id}`}>{song.title}</h3>
+                <span>{song.files.length} file{song.files.length === 1 ? "" : "s"}</span>
+              </div>
+              <div className="song-pdf-zoom-controls" aria-label="Attachment zoom controls">
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setZoomPercent((zoom) => Math.max(50, zoom - 25))}
+                  disabled={zoomPercent <= 50}
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                >
+                  <Minus size={17} />
+                </button>
+                <button
+                  type="button"
+                  className="song-pdf-zoom-reset"
+                  onClick={() => setZoomPercent(100)}
+                  aria-label="Reset zoom to 100 percent"
+                  title="Reset zoom"
+                >
+                  {zoomPercent}%
+                </button>
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setZoomPercent((zoom) => Math.min(300, zoom + 25))}
+                  disabled={zoomPercent >= 300}
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                >
+                  <Plus size={17} />
+                </button>
+              </div>
+              <label className={`secondary-button song-pdf-upload${uploading ? " disabled" : ""}`}>
+                <input
+                  className="guitar-hidden-file-input"
+                  type="file"
+                  accept="application/pdf,.pdf,image/png,.png"
+                  multiple
+                  disabled={uploading}
+                  onChange={(event) => void uploadFiles(event)}
+                />
+                <Plus size={16} />
+                {uploading ? "Uploading..." : "Add files"}
+              </label>
+              <button type="button" className="icon-button" onClick={() => setViewerOpen(false)} aria-label="Close file viewer">
+                <X size={18} />
+              </button>
+            </header>
+
+            {song.files.length > 2 ? (
+              <div className="song-pdf-navigation">
+                <div className="song-pdf-page-navigation">
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => setPageStart((current) => Math.max(0, current - 2))}
+                    disabled={pageStart === 0}
+                    aria-label="Previous files"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <span>{pageStart + 1}-{Math.min(pageStart + 2, song.files.length)} of {song.files.length}</span>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => setPageStart((current) => Math.min(maxPageStart, current + 2))}
+                    disabled={pageStart >= maxPageStart}
+                    aria-label="Next files"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className={`song-pdf-pages${visibleFiles.length === 1 ? " single" : ""}`}>
+              {visibleFiles.length ? visibleFiles.map((file) => (
+                <article key={file.id} className="song-pdf-page">
+                  <div className="song-pdf-file-header">
+                    <span title={file.display_name}>{file.display_name}</span>
+                    <button
+                      type="button"
+                      className="icon-button danger"
+                      onClick={() => void deleteFile(file.id)}
+                      disabled={deletingFileId === file.id}
+                      aria-label={`Delete file ${file.display_name}`}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  {file.display_name.toLowerCase().endsWith(".png") ? (
+                    <div
+                      className="song-pdf-image-viewport"
+                      onWheel={(event) => {
+                        if (!event.ctrlKey) return;
+                        event.preventDefault();
+                        setZoomPercent((zoom) => Math.max(50, Math.min(300, Math.round(zoom - event.deltaY * 0.15))));
+                      }}
+                    >
+                      <div className="song-pdf-image-stage" style={{ width: `${zoomPercent}%`, height: `${zoomPercent}%` }}>
+                        <img
+                          className="song-pdf-image"
+                          src={`${API_BASE}/api/guitar/song-files/${file.id}`}
+                          alt={file.display_name}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <SongPdfFrame
+                      key={file.id}
+                      fileId={file.id}
+                      filename={file.display_name}
+                      zoomPercent={zoomPercent}
+                    />
+                  )}
+                </article>
+              )) : (
+                <div className="song-pdf-empty">
+                  <FileText size={24} />
+                  <span>No files uploaded</span>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>,
+        document.body,
+      ) : null}
+    </>
+  );
+}
+
+function SongPdfFrame({
+  fileId,
+  filename,
+  zoomPercent,
+}: {
+  fileId: number;
+  filename: string;
+  zoomPercent: number;
+}) {
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    let active = true;
+    setPdfUrl(null);
+    setError(null);
+
+    fetch(`${API_BASE}/api/guitar/song-files/${fileId}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Could not load ${filename}.`);
+        return response.blob();
+      })
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+        if (active) setPdfUrl(objectUrl);
+      })
+      .catch((caught: unknown) => {
+        if (!active || (caught instanceof DOMException && caught.name === "AbortError")) return;
+        setError(caught instanceof Error ? caught.message : "Could not load this PDF.");
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [fileId, filename]);
+
+  if (error) return <div className="song-pdf-load-status" role="status">{error}</div>;
+  if (!pdfUrl) return <div className="song-pdf-load-status" role="status">Loading preview...</div>;
+
+  return (
+    <iframe
+      className="song-pdf-frame"
+      src={`${pdfUrl}#zoom=${zoomPercent}`}
+      title={filename}
+    />
+  );
+}
+
+function MajorBrowser() {
+  const { cagedOnly, keyIdx, rootIndices, moveRoot, selectRoot, toggleCagedOnly } = useChordRootNavigation();
+  const cfg = CHORD_TYPES[0]; // major
+  const positions = getChordPositions(keyIdx, cfg.id);
 
   return (
     <div className="chord-browser">
       <div className="chord-browser-nav">
-        <button className="icon-button chord-nav-btn" onClick={() => setKeyIdx((i) => (i - 1 + total) % total)} aria-label="Previous key">
+        <button className="icon-button chord-nav-btn" onClick={() => moveRoot(-1)} aria-label="Previous key">
           <ChevronLeft size={18} />
         </button>
-        <span className="chord-browser-label">{cfg.nameFn(KEY_LABELS[keyIdx])}</span>
-        <button className="icon-button chord-nav-btn" onClick={() => setKeyIdx((i) => (i + 1) % total)} aria-label="Next key">
+        <ChordNameWithDegrees
+          name={cfg.nameFn(KEY_LABELS[keyIdx])}
+          intervals={cfg.intervals}
+          tooltipId={`${cfg.id}-${keyIdx}-degrees`}
+          className="chord-browser-label"
+        />
+        <button className="icon-button chord-nav-btn" onClick={() => moveRoot(1)} aria-label="Next key">
           <ChevronRight size={18} />
         </button>
       </div>
+      <button type="button" className={`chord-caged-toggle${cagedOnly ? " active" : ""}`} onClick={toggleCagedOnly} aria-pressed={cagedOnly} title={cagedOnly ? "Show all keys" : "Show only C, A, G, E, and D"}>
+        CAGED only
+      </button>
       <div className="chord-browser-dots">
-        {KEY_LABELS.map((_, i) => (
-          <button key={i} className={`chord-dot-btn${i === keyIdx ? " active" : ""}`} onClick={() => setKeyIdx(i)} />
+        {rootIndices.map((rootIdx, position) => (
+          <button key={rootIdx} className={`chord-dot-btn${position === rootIndices.indexOf(keyIdx) ? " active" : ""}`} onClick={() => selectRoot(position)} aria-label={KEY_LABELS[rootIdx]} />
         ))}
       </div>
       <div className="chord-pos-row">
         {positions.map((p) => (
-          <ChordDiagram key={`major-${keyIdx}-${p.shape}`} label={posLabel(p)} defaultChord={p.chord} startFret={p.startFret} />
+          <ChordDiagram key={`major-${keyIdx}-${p.shape}`} label={p.shape} defaultChord={p.frets} startFret={p.startFret} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MinorBrowser() {
+  const { cagedOnly, keyIdx, rootIndices, moveRoot, selectRoot, toggleCagedOnly } = useChordRootNavigation();
+  const cfg = CHORD_TYPES[1];
+  const positions = getChordPositions(keyIdx, cfg.id);
+
+  return (
+    <div className="chord-browser">
+      <div className="chord-browser-nav">
+        <button className="icon-button chord-nav-btn" onClick={() => moveRoot(-1)} aria-label="Previous key">
+          <ChevronLeft size={18} />
+        </button>
+        <ChordNameWithDegrees
+          name={cfg.nameFn(KEY_LABELS[keyIdx])}
+          intervals={cfg.intervals}
+          tooltipId={`${cfg.id}-${keyIdx}-degrees`}
+          className="chord-browser-label"
+        />
+        <button className="icon-button chord-nav-btn" onClick={() => moveRoot(1)} aria-label="Next key">
+          <ChevronRight size={18} />
+        </button>
+      </div>
+      <button type="button" className={`chord-caged-toggle${cagedOnly ? " active" : ""}`} onClick={toggleCagedOnly} aria-pressed={cagedOnly} title={cagedOnly ? "Show all keys" : "Show only C, A, G, E, and D"}>
+        CAGED only
+      </button>
+      <div className="chord-browser-dots">
+        {rootIndices.map((rootIdx, position) => (
+          <button key={rootIdx} className={`chord-dot-btn${position === rootIndices.indexOf(keyIdx) ? " active" : ""}`} onClick={() => selectRoot(position)} aria-label={KEY_LABELS[rootIdx]} />
+        ))}
+      </div>
+      <div className="chord-pos-row">
+        {positions.map((p) => (
+          <ChordDiagram key={`minor-${keyIdx}-${p.shape}`} label={p.shape} defaultChord={p.frets} startFret={p.startFret} />
         ))}
       </div>
     </div>
@@ -704,41 +1340,48 @@ function MajorBrowser() {
 }
 
 function SeventhsBrowser() {
-  const [keyIdx, setKeyIdx] = useState(0);
-  const total = KEY_LABELS.length;
-  // CHORD_TYPES[1]=m7, [2]=dom7, [3]=maj7
-  const seventhTypes = CHORD_TYPES.slice(1);
-
-  function posLabel(p: CagedPosition) {
-    return p.chord.includes("o") ? `${p.shape} · open` : `${p.shape} · fr.${p.startFret}`;
-  }
+  const { cagedOnly, keyIdx, rootIndices, moveRoot, selectRoot, toggleCagedOnly } = useChordRootNavigation();
+  const seventhTypes = CHORD_TYPES.slice(2);
 
   return (
     <div className="chord-browser chord-browser-sevenths">
       <div className="chord-browser-nav">
-        <button className="icon-button chord-nav-btn" onClick={() => setKeyIdx((i) => (i - 1 + total) % total)} aria-label="Previous key">
+        <button className="icon-button chord-nav-btn" onClick={() => moveRoot(-1)} aria-label="Previous key">
           <ChevronLeft size={18} />
         </button>
         <span className="chord-browser-label">{KEY_LABELS[keyIdx]}</span>
-        <button className="icon-button chord-nav-btn" onClick={() => setKeyIdx((i) => (i + 1) % total)} aria-label="Next key">
+        <button className="icon-button chord-nav-btn" onClick={() => moveRoot(1)} aria-label="Next key">
           <ChevronRight size={18} />
         </button>
       </div>
+      <button type="button" className={`chord-caged-toggle${cagedOnly ? " active" : ""}`} onClick={toggleCagedOnly} aria-pressed={cagedOnly} title={cagedOnly ? "Show all keys" : "Show only C, A, G, E, and D"}>
+        CAGED only
+      </button>
       <div className="chord-browser-dots">
-        {KEY_LABELS.map((_, i) => (
-          <button key={i} className={`chord-dot-btn${i === keyIdx ? " active" : ""}`} onClick={() => setKeyIdx(i)} />
+        {rootIndices.map((rootIdx, position) => (
+          <button key={rootIdx} className={`chord-dot-btn${position === rootIndices.indexOf(keyIdx) ? " active" : ""}`} onClick={() => selectRoot(position)} aria-label={KEY_LABELS[rootIdx]} />
         ))}
       </div>
-      {seventhTypes.map((cfg) => (
-        <div key={cfg.id} className="chord-sevenths-row">
-          <span className="chord-row-type-label">{cfg.nameFn(KEY_LABELS[keyIdx])}</span>
-          <div className="chord-pos-row">
-            {getPositions(keyIdx, cfg).map((p) => (
-              <ChordDiagram key={`${cfg.id}-${keyIdx}-${p.shape}`} label={posLabel(p)} defaultChord={p.chord} startFret={p.startFret} />
-            ))}
+      {seventhTypes.map((cfg) => {
+        const chordName = cfg.nameFn(KEY_LABELS[keyIdx]);
+        const tooltipId = `${cfg.id}-${keyIdx}-intervals`;
+
+        return (
+          <div key={cfg.id} className="chord-sevenths-row">
+            <ChordNameWithDegrees
+              name={chordName}
+              intervals={cfg.intervals}
+              tooltipId={tooltipId}
+              className="chord-row-type-label"
+            />
+            <div className="chord-pos-row">
+              {getChordPositions(keyIdx, cfg.id).map((p) => (
+                <ChordDiagram key={`${cfg.id}-${keyIdx}-${p.shape}`} label={p.shape} defaultChord={p.frets} startFret={p.startFret} />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -746,19 +1389,24 @@ function SeventhsBrowser() {
 function ChordDiagram({
   label,
   defaultChord,
-  startFret = 1,
+  startFret,
 }: {
   label: string;
-  defaultChord: ChordValue[];
-  startFret?: number;
+  defaultChord: readonly ChordValue[];
+  startFret: number | null;
 }) {
-  const [chord, setChord] = useState<ChordValue[]>(defaultChord);
+  const [chord, setChord] = useState<ChordValue[]>([...defaultChord]);
   const [hover, setHover] = useState<{ s: number; f: number } | null>(null);
 
+  useEffect(() => {
+    setChord([...defaultChord]);
+  }, [defaultChord]);
+
   function handleFretClick(s: number, f: number) {
+    const actualFret = firstVisibleFret + f - 1;
     setChord((prev) => {
       const next = [...prev] as ChordValue[];
-      next[s] = next[s] === f ? "o" : (f as ChordValue);
+      next[s] = next[s] === actualFret ? "o" : actualFret;
       return next;
     });
   }
@@ -769,17 +1417,20 @@ function ChordDiagram({
   const fretboardBottom = cdFretLineY(CD_NUM_FRETS);
   const fretboardLeft = cdStringX(0);
   const fretboardRight = cdStringX(5);
+  const isOpenPosition = chord.includes("o");
+  const firstVisibleFret = startFret ?? 1;
 
   return (
     <div className="chord-diagram">
       <span className="chord-diagram-label">{label}</span>
-      <svg
-        viewBox={`0 0 ${CD_W} ${CD_H}`}
-        width={CD_W}
-        height={CD_H}
-        className="chord-diagram-svg"
-        aria-label={`${label} chord diagram`}
-      >
+      <div className="chord-diagram-board">
+        <svg
+          viewBox={`0 0 ${CD_W} ${CD_H}`}
+          width={CD_W}
+          height={CD_H}
+          className="chord-diagram-svg"
+          aria-label={`${label} chord diagram${startFret === null ? "" : ` starting at ${formatOrdinal(startFret)} fret`}`}
+        >
         {/* Fretboard background */}
         <rect
           x={fretboardLeft} y={fretboardTop}
@@ -788,28 +1439,19 @@ function ChordDiagram({
           fill="rgba(255,255,255,0.03)"
         />
 
-        {/* Nut (thick) or open-position marker (thin) + fret label */}
-        {startFret === 1 ? (
+        {/* Open shapes use a nut; movable shapes use a neutral starting line. */}
+        {isOpenPosition ? (
           <line
             x1={fretboardLeft} y1={CD_NUT_Y}
             x2={fretboardRight} y2={CD_NUT_Y}
             style={{ stroke: "rgba(255,255,255,0.9)", strokeWidth: 5, strokeLinecap: "round" }}
           />
         ) : (
-          <>
-            <line
-              x1={fretboardLeft} y1={CD_NUT_Y}
-              x2={fretboardRight} y2={CD_NUT_Y}
-              style={{ stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.5 }}
-            />
-            <text
-              x={fretboardRight + 10} y={CD_NUT_Y + 5}
-              fontSize={11} fontWeight="600"
-              style={{ fill: "rgba(255,255,255,0.55)", fontFamily: "monospace" }}
-            >
-              {startFret}fr
-            </text>
-          </>
+          <line
+            x1={fretboardLeft} y1={CD_NUT_Y}
+            x2={fretboardRight} y2={CD_NUT_Y}
+            style={{ stroke: "rgba(255,255,255,0.3)", strokeWidth: 1.5 }}
+          />
         )}
 
         {/* Fret lines */}
@@ -837,7 +1479,7 @@ function ChordDiagram({
             textAnchor="middle" fontSize={10}
             style={{ fill: "rgba(255,255,255,0.35)", fontFamily: "monospace" }}
           >
-            {f + 1}
+            {firstVisibleFret + f}
           </text>
         ))}
 
@@ -845,7 +1487,8 @@ function ChordDiagram({
         {Array.from({ length: 6 }, (_, s) =>
           Array.from({ length: CD_NUM_FRETS }, (_, fi) => {
             const fret = fi + 1;
-            const isActive = chord[s] === fret;
+            const actualFret = firstVisibleFret + fret - 1;
+            const isActive = chord[s] === actualFret;
             const isHovered = hover?.s === s && hover?.f === fret;
             return (
               <g key={`${s}-${fret}`}>
@@ -896,9 +1539,31 @@ function ChordDiagram({
             </g>
           );
         })}
-      </svg>
+        </svg>
+        {startFret !== null ? (
+          <span className="chord-diagram-start-marker">{formatOrdinal(startFret)}</span>
+        ) : null}
+      </div>
     </div>
   );
+}
+
+function formatOrdinal(value: number) {
+  const lastTwoDigits = value % 100;
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+    return `${value}th`;
+  }
+
+  switch (value % 10) {
+    case 1:
+      return `${value}st`;
+    case 2:
+      return `${value}nd`;
+    case 3:
+      return `${value}rd`;
+    default:
+      return `${value}th`;
+  }
 }
 
 function StepperField({

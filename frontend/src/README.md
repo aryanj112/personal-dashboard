@@ -26,7 +26,6 @@ This folder contains the entire client application.
 
 It also decides which pages are visible:
 
-- finance and reflection are gated by dashboard preferences
 - settings is always available
 - resume is an independent page with its own data loading
 

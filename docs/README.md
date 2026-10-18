@@ -28,5 +28,4 @@ These docs are written to help coding agents and humans navigate the repo quickl
 ## Historical / Special-Purpose Notes
 
 - `../COMPANY_LIST_CONTEXT.md`: tracked company system and cowork-text generation
-- `../TESLA_SCRAPER_CONTEXT.md`: Tesla scraper context and anti-bot caveats
 - `../session.md`: project narrative and product-history context

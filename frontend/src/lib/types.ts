@@ -5,6 +5,7 @@ export type Habit = {
   sort_order: number;
   completed?: boolean;
   notes?: string | null;
+  is_sick?: boolean;
 };
 
 export type TaskPriority = "high" | "medium" | "low";
@@ -105,6 +106,7 @@ export type DistributionPoint = {
 export type ModuleResponse = {
   sections: Section[];
   sessions: Session[];
+  sick_dates?: string[];
   analytics: {
     weekly_minutes: AnalyticsPoint[];
     rolling_average: AnalyticsPoint[];
@@ -180,60 +182,12 @@ export type DashboardResponse = {
     date: string;
     count: number;
     habits: string[];
+    sick_habits?: string[];
     total_habits?: number;
   }[];
   guitar: ModuleResponse["analytics"];
   workouts: ModuleResponse["analytics"];
   recent_activity: ActivityItem[];
-};
-
-export type FinanceCategory = {
-  id: number;
-  name: string;
-  sort_order: number;
-};
-
-export type FinanceExpense = {
-  id: number;
-  entryKey: string;
-  name: string;
-  amount: number;
-  date: string;
-  source: "manual" | "subscription";
-  subscriptionId: number | null;
-  category: FinanceCategory;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type FinanceSubscription = {
-  id: number;
-  name: string;
-  amount: number;
-  billingDay: number;
-  startDate: string;
-  endDate: string;
-  isActive: boolean;
-  category: FinanceCategory;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type FinanceWishlistItem = {
-  id: number;
-  name: string;
-  link: string;
-  price: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type FinanceResponse = {
-  month: string;
-  categories: FinanceCategory[];
-  expenses: FinanceExpense[];
-  subscriptions: FinanceSubscription[];
-  wishlist: FinanceWishlistItem[];
 };
 
 export type Company = {

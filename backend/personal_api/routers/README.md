@@ -12,8 +12,6 @@ Each router file defines HTTP endpoints for one domain and usually delegates mos
 - `networking.py`: contacts and potential connects
 - `companies.py`: tracked companies CRUD and cowork-text export
 - `notes.py`: singleton notes document
-- `finance.py`: finance categories, expenses, subscriptions, wishlist
-- `reflection.py`: reflection content payload
 - `resume.py`: LaTeX compile endpoint
 
 ## Conventions
@@ -26,7 +24,7 @@ Each router file defines HTTP endpoints for one domain and usually delegates mos
 ## Notable Route Behaviors
 
 - `tasks.py` materializes recurring task instances when the week payload is requested.
-- `modules.py` mixes JSON endpoints with file upload/download endpoints for guitar song PDFs.
+- `modules.py` mixes JSON endpoints with file upload/download endpoints for guitar song files.
 - `notes.py` manages a singleton document instead of a collection resource.
 - `resume.py` returns PDF bytes, not JSON.
 - `companies.py` uses absolute paths under `/api/companies` instead of an `APIRouter(prefix=...)` pattern.

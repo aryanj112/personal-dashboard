@@ -8,7 +8,6 @@ FRONTEND_DIR="$ROOT_DIR/frontend"
 
 BACKEND_PID=""
 FRONTEND_PID=""
-OLLAMA_PID=""
 BACKEND_ARGS=("app:app")
 
 cleanup() {
@@ -18,10 +17,6 @@ cleanup() {
 
   if [[ -n "${FRONTEND_PID}" ]] && kill -0 "${FRONTEND_PID}" 2>/dev/null; then
     kill "${FRONTEND_PID}" 2>/dev/null || true
-  fi
-
-  if [[ -n "${OLLAMA_PID}" ]] && kill -0 "${OLLAMA_PID}" 2>/dev/null; then
-    kill "${OLLAMA_PID}" 2>/dev/null || true
   fi
 
   # Bring the background backend service back up now that dev mode is done
@@ -72,15 +67,6 @@ launchctl bootout "gui/$(id -u)/com.aryanjain.personal-api" 2>/dev/null || true
 # Kill anything still holding the ports
 lsof -ti :8000 | xargs kill -9 2>/dev/null || true
 lsof -ti :5173 | xargs kill -9 2>/dev/null || true
-
-if command -v ollama >/dev/null 2>&1; then
-  if ! curl -sf http://localhost:11434 >/dev/null 2>&1; then
-    ollama serve >/dev/null 2>&1 &
-    OLLAMA_PID=$!
-    echo "Starting Ollama..."
-    sleep 2
-  fi
-fi
 
 if [[ "${1:-}" != "--no-reload-backend" ]]; then
   BACKEND_ARGS+=("--reload")

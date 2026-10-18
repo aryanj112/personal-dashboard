@@ -22,6 +22,11 @@ class HabitLogUpsert(BaseModel):
     notes: str | None = None
 
 
+class HabitSickDayUpsert(BaseModel):
+    date: dt_date
+    is_sick: bool
+
+
 class TaskCreate(BaseModel):
     text: str = Field(min_length=1, max_length=200)
     date: dt_date | None = None
@@ -104,6 +109,10 @@ class GuitarSongUpdate(BaseModel):
     notes: str | None = None
 
 
+class GuitarSongOrderUpdate(BaseModel):
+    song_ids: list[int] = Field(min_length=1)
+
+
 class NetworkingLocationPayload(BaseModel):
     city: str = ""
     region: str = ""
@@ -157,61 +166,6 @@ class PotentialConnectUpdate(BaseModel):
     status: str | None = Field(default=None, max_length=40)
     date_sent: dt_date | None = None
     notes: str | None = None
-
-
-class FinanceCategoryCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=80)
-
-
-class FinanceCategoryUpdate(BaseModel):
-    name: str = Field(min_length=1, max_length=80)
-
-
-class FinanceCategoryReorder(BaseModel):
-    category_ids: list[int] = Field(default_factory=list)
-
-
-class FinanceExpenseCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=160)
-    category_id: int
-    amount: float = Field(gt=0, le=1_000_000)
-    date: dt_date
-
-
-class FinanceExpenseUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=160)
-    category_id: int | None = None
-    amount: float | None = Field(default=None, gt=0, le=1_000_000)
-    date: dt_date | None = None
-
-
-class FinanceSubscriptionCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=160)
-    category_id: int
-    amount: float = Field(gt=0, le=1_000_000)
-    billing_day: int = Field(ge=1, le=31)
-    start_date: dt_date
-
-
-class FinanceSubscriptionUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=160)
-    category_id: int | None = None
-    amount: float | None = Field(default=None, gt=0, le=1_000_000)
-    billing_day: int | None = Field(default=None, ge=1, le=31)
-    start_date: dt_date | None = None
-    end_date: dt_date | None = None
-
-
-class FinanceWishlistItemCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=160)
-    link: str = Field(min_length=1, max_length=500)
-    price: float = Field(gt=0, le=1_000_000)
-
-
-class FinanceWishlistItemUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=160)
-    link: str | None = Field(default=None, min_length=1, max_length=500)
-    price: float | None = Field(default=None, gt=0, le=1_000_000)
 
 
 class RecurringTaskCreate(BaseModel):

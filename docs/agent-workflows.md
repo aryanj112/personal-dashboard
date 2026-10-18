@@ -9,7 +9,7 @@ These are the highest-value implementation patterns in this repo.
 3. Read the backend router and service pair for those calls.
 4. Check `frontend/src/lib/types.ts` for the response shape.
 5. If the UI is shared, inspect `frontend/src/components/`.
-6. If visual behavior looks odd, confirm which stylesheet actually owns it: `app-military.css` is active.
+6. If visual behavior looks odd, confirm which stylesheet owns it: `app.css` is active.
 
 ## 2. Add A New Backend Resource
 
@@ -76,25 +76,7 @@ Things that surprise agents:
 - tags are stored as JSON in SQLite
 - follow-up urgency is partly derived from dates and partly from tags/status
 
-## 7. Work On Internships
-
-Read these together:
-
-- `backend/personal_api/services/internships.py`
-- `backend/personal_api/services/tesla_scraper.py`
-- `frontend/src/pages/InternshipsPage.tsx`
-- `COMPANY_LIST_CONTEXT.md`
-- `TESLA_SCRAPER_CONTEXT.md`
-
-Things that surprise agents:
-
-- `tracked_companies` drives both internships and cowork export
-- `source_type = 'none'` keeps companies out of internship fetching
-- postings are bucketed with a mix of heuristics and manual overrides
-- Tesla is the most specialized fetch path
-- Ollama summaries are optional and failure-tolerant
-
-## 8. Work On Resume Features
+## 7. Work On Resume Features
 
 Read these together:
 
@@ -108,9 +90,9 @@ Things that surprise agents:
 - the backend only compiles LaTeX source to a PDF blob
 - preview rendering uses `pdfjs-dist`
 
-## 9. Styling Changes
+## 8. Styling Changes
 
-1. Confirm whether the class lives in `app-military.css` or `app.css`.
-2. Prefer editing the active file unless you are intentionally reviving legacy styling.
+1. Confirm whether the class lives in `app.css`.
+2. Edit the active stylesheet directly.
 3. Reuse CSS custom properties before adding hard-coded values.
 4. If you touch theme behavior, remember `theme` is active and `mood` is currently vestigial.

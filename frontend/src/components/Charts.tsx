@@ -174,6 +174,7 @@ export function Heatmap({
     date: string;
     count: number;
     habits: string[];
+    sick_habits?: string[];
     total_habits?: number;
   }[];
   totalHabits: number;
@@ -181,15 +182,26 @@ export function Heatmap({
 }) {
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const activeCell = cells.find((cell) => cell.date === activeDate) ?? null;
+  const weekdayLabels = cells.length > 0
+    ? Array.from({ length: 7 }, (_, index) => {
+        const day = new Date(`${cells[0].date}T12:00:00`);
+        day.setDate(day.getDate() + index);
+        return day.toLocaleDateString(undefined, { weekday: "short" });
+      })
+    : [];
 
   return (
     <div className="heatmap-stack">
+      <div className="heatmap-weekdays" aria-hidden="true">
+        {weekdayLabels.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
+      </div>
       <div className="heatmap">
         {cells.map((cell) => {
-          const detail =
-            cell.habits.length > 0
-              ? `${cell.date}: ${cell.habits.join(", ")}`
-              : `${cell.date}: no habits completed`;
+          const detailParts = [
+            cell.habits.length > 0 ? `Completed: ${cell.habits.join(", ")}` : "No habits completed",
+            cell.sick_habits?.length ? `Sick: ${cell.sick_habits.join(", ")}` : "",
+          ].filter(Boolean);
+          const detail = `${cell.date}: ${detailParts.join(" · ")}`;
           return (
             <button
               key={cell.date}
@@ -202,13 +214,15 @@ export function Heatmap({
                   : `level-${Math.min(cell.count, 5)}`
               } ${
                 activeDate === cell.date ? "active" : ""
-              }`}
+              } ${cell.sick_habits?.length ? "sick-marked" : ""}`}
+              aria-label={detail}
               title={detail}
               onMouseEnter={() => setActiveDate(cell.date)}
               onFocus={() => setActiveDate(cell.date)}
               onClick={() => setActiveDate((current) => (current === cell.date ? null : cell.date))}
             >
               {variant === "binary" && cell.count > 0 ? <span className="heat-cell-check">✓</span> : null}
+              {cell.sick_habits?.length ? <span className="heat-cell-sick-indicator" aria-hidden="true" /> : null}
             </button>
           );
         })}
@@ -249,22 +263,21 @@ export function Heatmap({
             </span>
           </>
         )}
+        <span className="heatmap-key-item">
+          <span className="heatmap-key-swatch sick-marker" />
+          Sick day
+        </span>
       </div>
       <div className="heatmap-detail" aria-live="polite">
         {activeCell ? (
-          activeCell.habits.length > 0 ? (
-            <>
-              <strong>{activeCell.date}</strong>
-              <span>{activeCell.count} / {activeCell.total_habits ?? totalHabits}</span>
-              <span>{activeCell.habits.join(", ")}</span>
-            </>
-          ) : (
-            <>
-              <strong>{activeCell.date}</strong>
-              <span>0 / {activeCell.total_habits ?? totalHabits}</span>
-              <span>No habits completed</span>
-            </>
-          )
+          <>
+            <strong>{activeCell.date}</strong>
+            <span>{activeCell.count} / {activeCell.total_habits ?? totalHabits}</span>
+            <span>{activeCell.habits.length ? `Completed: ${activeCell.habits.join(", ")}` : "No habits completed"}</span>
+            {activeCell.sick_habits?.length ? (
+              <span className="heatmap-sick-detail">Sick: {activeCell.sick_habits.join(", ")}</span>
+            ) : null}
+          </>
         ) : (
           <span>Hover or click a day to see which habits you completed.</span>
         )}

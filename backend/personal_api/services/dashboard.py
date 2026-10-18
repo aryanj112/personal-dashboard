@@ -34,6 +34,10 @@ def activity_feed(conn: sqlite3.Connection, limit: int = 10) -> list[dict[str, A
         FROM habit_logs hl
         JOIN habits h ON h.id = hl.habit_id
         WHERE hl.completed = 1
+          AND NOT EXISTS (
+              SELECT 1 FROM habit_sick_days hsd
+              WHERE hsd.habit_id = hl.habit_id AND hsd.sick_date = hl.log_date
+          )
           AND h.name NOT IN ({placeholders})
         ORDER BY hl.log_date DESC, hl.id DESC
         LIMIT ?

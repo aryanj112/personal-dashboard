@@ -24,6 +24,7 @@ If you change storage, update `create_schema()` rather than assuming a clean DB.
 
 - `habits`: habit definitions, sort order, soft-delete metadata
 - `habit_logs`: per-day manual completion rows
+- `habit_sick_days`: neutral Singing and Exercise dates that preserve streaks without marking completion
 - `tasks`: dated tasks, misc tasks, checklist links, recurring-task instance links
 - `goals`: lightweight evergreen goals
 - `checklist_trackers`: checklist definitions
@@ -77,19 +78,11 @@ Important rules:
 - `potential_connects` is a separate outreach queue, not the same thing as real contacts
 - services keep parts of these tables in sync when names/companies/LinkedIn URLs change
 
-### Internships And Companies
+### Tracked Companies And Retained Feature Data
 
 - `tracked_companies`
-- `internship_postings`
 
-Important rules:
-
-- `tracked_companies` is the single source of truth for internship tracking and the cowork-text export
-- `source_type = 'none'` means the company is intentionally excluded from internship fetch lists
-- `internship_postings` is keyed by `(company_id, external_id)`
-- postings are soft-refreshed by toggling `is_active`
-- `manual_bucket` values are `''`, `prime`, `not_prime`, `hidden`
-- `ai_summary` is best-effort and may be empty
+`tracked_companies` powers the active Settings company manager and cowork-text export. Old internship and posting records may remain in existing databases but have no active page or API.
 
 ### Finance
 
@@ -98,20 +91,13 @@ Important rules:
 - `finance_subscriptions`
 - `finance_wishlist_items`
 
-Important rules:
-
-- money is stored as integer cents in the DB
-- the monthly finance payload merges manual expenses with derived subscription occurrences
-- a category cannot be deleted while expenses/subscriptions still reference it
+These tables and existing rows are retained in SQLite, but the Finance API and UI have been removed. No database file or record was changed.
 
 ### Reflection
 
 - `reflection_items`
 
-Important rules:
-
-- one table stores multiple item types: `quote`, `prompt`, `question`, `video`
-- the service splits them into separate arrays for the frontend
+Existing reflection rows are retained; no active reflection page or API is mounted.
 
 ## Seed Data
 
@@ -136,14 +122,6 @@ The `Guitar` and `Exercise` habits are derived from session tables, not only fro
 ### Recurring Tasks
 
 Rules in `recurring_tasks` are expanded into concrete `tasks` rows for visible date ranges. Deleting a recurring rule detaches generated tasks by clearing `tasks.recurring_task_id`.
-
-### Finance Month View
-
-Monthly expenses are not just `finance_expenses`. Subscription rows generate synthetic monthly occurrences that appear alongside manual expenses in the response payload.
-
-### Internship Posting Refresh
-
-Refreshing postings does not truncate the table. Existing rows are marked inactive and matching live rows are upserted, which preserves bucketing and applied state more safely than a hard delete/reinsert workflow.
 
 ## Filesystem Sidecars
 

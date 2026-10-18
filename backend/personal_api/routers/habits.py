@@ -6,11 +6,12 @@ from fastapi import APIRouter, HTTPException, Response
 
 from ..core.db import get_db
 from ..core.utils import iso_today
-from ..schemas import HabitCreate, HabitLogUpsert, HabitUpdate
+from ..schemas import HabitCreate, HabitLogUpsert, HabitSickDayUpsert, HabitUpdate
 from ..services.habits import (
     get_habits,
     get_today_payload,
     is_session_backed_habit,
+    set_sick_day_for_all_habits,
     upsert_habit_log,
 )
 
@@ -104,3 +105,9 @@ def api_log_habit(habit_id: int, payload: HabitLogUpsert) -> dict[str, Any]:
                 detail="Log a session to complete this habit.",
             )
         return upsert_habit_log(conn, habit_id, payload)
+
+
+@router.put("/habits/sick-day")
+def api_set_sick_day(payload: HabitSickDayUpsert) -> dict[str, Any]:
+    with get_db() as conn:
+        return set_sick_day_for_all_habits(conn, payload)

@@ -1,11 +1,6 @@
 import type {
   Company,
   DashboardResponse,
-  FinanceCategory,
-  FinanceExpense,
-  FinanceResponse,
-  FinanceSubscription,
-  FinanceWishlistItem,
   Goal,
   GuitarMaterial,
   QuickLink,
@@ -68,6 +63,12 @@ export const api = {
     return request(`/api/habits/${habitId}/log`, {
       method: "PUT",
       body: JSON.stringify({ date, completed }),
+    });
+  },
+  setSickDay(isSick: boolean, date: string) {
+    return request(`/api/habits/sick-day`, {
+      method: "PUT",
+      body: JSON.stringify({ date, is_sick: isSick }),
     });
   },
   getWeek(weekStart?: string) {
@@ -173,7 +174,7 @@ export const api = {
       date: string;
       duration_minutes?: number;
       run_miles?: number | null;
-      notes: string;
+      notes?: string;
       section_ids: number[];
       is_rest?: boolean;
     },
@@ -226,6 +227,12 @@ export const api = {
     return request<GuitarSong>(`/api/guitar/song-groups/${groupId}/songs`, {
       method: "POST",
       body: JSON.stringify({ title }),
+    });
+  },
+  reorderGuitarSongs(groupId: number, songIds: number[]) {
+    return request<{ ok: boolean }>(`/api/guitar/song-groups/${groupId}/songs/order`, {
+      method: "PUT",
+      body: JSON.stringify({ song_ids: songIds }),
     });
   },
   updateGuitarSong(songId: number, patch: { title?: string; notes?: string }) {
@@ -320,131 +327,6 @@ export const api = {
   },
   deletePotentialConnect(connectId: number) {
     return request<{ ok: boolean }>(`/api/networking/potential-connects/${connectId}`, {
-      method: "DELETE",
-    });
-  },
-  getFinance(month?: string) {
-    const query = month ? `?month=${month}` : "";
-    return request<FinanceResponse>(`/api/finance${query}`);
-  },
-  getFinanceCategories() {
-    return request<{ categories: FinanceCategory[] }>("/api/finance/categories");
-  },
-  createFinanceCategory(name: string) {
-    return request<FinanceCategory>("/api/finance/categories", {
-      method: "POST",
-      body: JSON.stringify({ name }),
-    });
-  },
-  updateFinanceCategory(categoryId: number, name: string) {
-    return request<FinanceCategory>(`/api/finance/categories/${categoryId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ name }),
-    });
-  },
-  reorderFinanceCategories(categoryIds: number[]) {
-    return request<{ categories: FinanceCategory[] }>("/api/finance/categories/order", {
-      method: "PUT",
-      body: JSON.stringify({ category_ids: categoryIds }),
-    });
-  },
-  deleteFinanceCategory(categoryId: number) {
-    return request<{ ok: boolean }>(`/api/finance/categories/${categoryId}`, {
-      method: "DELETE",
-    });
-  },
-  createFinanceExpense(payload: {
-    name: string;
-    categoryId: number;
-    amount: number;
-    date: string;
-  }) {
-    return request<FinanceExpense>("/api/finance/expenses", {
-      method: "POST",
-      body: JSON.stringify({
-        name: payload.name,
-        category_id: payload.categoryId,
-        amount: payload.amount,
-        date: payload.date,
-      }),
-    });
-  },
-  deleteFinanceExpense(expenseId: number) {
-    return request<{ ok: boolean }>(`/api/finance/expenses/${expenseId}`, {
-      method: "DELETE",
-    });
-  },
-  createFinanceSubscription(payload: {
-    name: string;
-    categoryId: number;
-    amount: number;
-    billingDay: number;
-    startDate: string;
-  }) {
-    return request<FinanceSubscription>("/api/finance/subscriptions", {
-      method: "POST",
-      body: JSON.stringify({
-        name: payload.name,
-        category_id: payload.categoryId,
-        amount: payload.amount,
-        billing_day: payload.billingDay,
-        start_date: payload.startDate,
-      }),
-    });
-  },
-  updateFinanceSubscription(
-    subscriptionId: number,
-    payload: {
-      name?: string;
-      categoryId?: number;
-      amount?: number;
-      billingDay?: number;
-      startDate?: string;
-      endDate?: string | null;
-    },
-  ) {
-    return request<FinanceSubscription>(`/api/finance/subscriptions/${subscriptionId}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        ...(payload.name !== undefined ? { name: payload.name } : {}),
-        ...(payload.categoryId !== undefined ? { category_id: payload.categoryId } : {}),
-        ...(payload.amount !== undefined ? { amount: payload.amount } : {}),
-        ...(payload.billingDay !== undefined ? { billing_day: payload.billingDay } : {}),
-        ...(payload.startDate !== undefined ? { start_date: payload.startDate } : {}),
-        ...(payload.endDate !== undefined ? { end_date: payload.endDate } : {}),
-      }),
-    });
-  },
-  deleteFinanceSubscription(subscriptionId: number) {
-    return request<{ ok: boolean }>(`/api/finance/subscriptions/${subscriptionId}`, {
-      method: "DELETE",
-    });
-  },
-  createFinanceWishlistItem(payload: {
-    name: string;
-    link: string;
-    price: number;
-  }) {
-    return request<FinanceWishlistItem>("/api/finance/wishlist", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-  updateFinanceWishlistItem(
-    wishlistItemId: number,
-    payload: {
-      name?: string;
-      link?: string;
-      price?: number;
-    },
-  ) {
-    return request<FinanceWishlistItem>(`/api/finance/wishlist/${wishlistItemId}`, {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    });
-  },
-  deleteFinanceWishlistItem(wishlistItemId: number) {
-    return request<{ ok: boolean }>(`/api/finance/wishlist/${wishlistItemId}`, {
       method: "DELETE",
     });
   },

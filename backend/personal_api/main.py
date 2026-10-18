@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.db import create_schema
-from .routers import dashboard, finance, habits, links, modules, networking, notes, resume, system, tasks, companies
+from .routers import dashboard, habits, links, modules, networking, notes, resume, system, tasks, companies
 
 
 def create_app() -> FastAPI:
@@ -24,7 +24,6 @@ def create_app() -> FastAPI:
     app.include_router(companies.router)
     app.include_router(notes.router)
     app.include_router(links.router)
-    app.include_router(finance.router)
     app.include_router(resume.router)
 
     @app.on_event("startup")

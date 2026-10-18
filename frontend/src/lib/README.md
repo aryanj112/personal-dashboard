@@ -35,12 +35,6 @@ If backend responses change, update this file together with the affected UI.
 
 - parsing/formatting helpers for run durations and minute/second inputs
 
-### `finance.ts`
-
-- month shifting/formatting
-- currency formatting
-- client-side finance distribution helpers
-
 ## Important Notes
 
 - This folder is the best place to confirm the frontend/backend contract quickly.

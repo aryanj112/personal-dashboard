@@ -29,7 +29,6 @@ export function WorkoutHistoryCard({
       run_duration_input: sessionStartsAsRun
         ? formatDurationInput(session.duration_minutes)
         : formatDurationInput(defaultRunDuration),
-      notes: session.notes ?? "",
       is_rest: session.is_rest ?? false,
     }),
     [defaultRunDuration, session, sessionStartsAsRun],
@@ -55,7 +54,6 @@ export function WorkoutHistoryCard({
         : isRun
           ? parseDurationInput(form.run_duration_input, defaultRunDuration)
           : form.duration_minutes,
-      notes: form.notes,
       is_rest: form.is_rest,
     });
     setEditing(false);
@@ -165,17 +163,6 @@ export function WorkoutHistoryCard({
           </div>
         ) : null}
 
-        <label>
-          <span>Notes</span>
-          <textarea
-            className="field-textarea"
-            rows={3}
-            value={form.notes}
-            onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
-            placeholder="Anything worth remembering?"
-          />
-        </label>
-
         <div className="editor-actions">
           <button className="secondary-button" type="button" onClick={() => setEditing(false)}>
             <X size={16} />
@@ -204,7 +191,6 @@ export function WorkoutHistoryCard({
             ? ` · ${session.run_miles} mi in ${formatDurationMinutes(session.duration_minutes)}`
             : ""}
         </p>
-        {session.notes ? <small>{session.notes}</small> : null}
       </div>
       <div className="session-card-actions">
         <button className="icon-button" type="button" onClick={() => setEditing(true)} aria-label="Edit workout">

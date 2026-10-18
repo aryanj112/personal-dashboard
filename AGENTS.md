@@ -27,8 +27,7 @@ Read these in order when you need orientation:
 - `frontend/src/components/`: reused editors/charts/layout
 - `frontend/src/lib/api.ts`: frontend-to-backend contract
 - `frontend/src/lib/types.ts`: shared frontend response types
-- `frontend/src/styles/app-military.css`: active theme
-- `frontend/src/styles/app.css`: legacy theme reference
+- `frontend/src/styles/app.css`: active theme
 
 ## Generated And User-Data Areas
 
@@ -56,10 +55,6 @@ Agents should avoid editing database files directly unless the task is explicitl
   - `Exercise` completion comes from `workout_sessions`
   - do not treat those habits like ordinary `habit_logs`
 - Recurring tasks are rules in `recurring_tasks`, but visible tasks are materialized into `tasks`.
-- Internship fetches soft-refresh postings:
-  - old rows are marked inactive
-  - current rows are upserted by `(company_id, external_id)`
-  - manual buckets and applied state are preserved across refreshes
 - Company edits also regenerate `backend/data/companies_cowork.txt`.
 
 ### Frontend
@@ -67,7 +62,7 @@ Agents should avoid editing database files directly unless the task is explicitl
 - There is no URL router. `frontend/src/App.tsx` keeps a string route in state/localStorage.
 - The frontend API base is hardcoded to `http://127.0.0.1:8000`.
 - Page visibility is partly controlled by dashboard preferences in localStorage.
-- The active stylesheet is `app-military.css`.
+- The active stylesheet is `app.css`.
 - `mood` is still stored in `App.tsx` and passed through `SettingsPage`, but the active stylesheet no longer uses it.
 - The resume page is mostly local-first state plus backend PDF compilation.
 - The Today page migrated notes from a legacy localStorage key to the backend `app_notes` table.
@@ -78,9 +73,6 @@ Agents should avoid editing database files directly unless the task is explicitl
 - Dashboard analytics: `services/dashboard.py`, `frontend/src/pages/DashboardPage.tsx`
 - Guitar/workouts: `routers/modules.py`, `services/modules.py`, `frontend/src/pages/GuitarPage.tsx`, `frontend/src/pages/ModulePage.tsx`
 - Networking: `routers/networking.py`, `services/networking.py`, `frontend/src/pages/NetworkingPage.tsx`
-- Internships: `routers/internships.py`, `services/internships.py`, `services/tesla_scraper.py`, `frontend/src/pages/InternshipsPage.tsx`
-- Finance: `routers/finance.py`, `services/finance.py`, `frontend/src/pages/FinancePage.tsx`
-- Reflection: `routers/reflection.py`, `services/reflection.py`, `frontend/src/pages/ReflectionPage.tsx`
 - Resume: `routers/resume.py`, `services/resume.py`, `frontend/src/pages/ResumePage.tsx`
 - Settings/admin surfaces: `frontend/src/pages/SettingsPage.tsx`, plus the domain APIs it calls
 
@@ -110,8 +102,6 @@ Agents should avoid editing database files directly unless the task is explicitl
 
 - `pdflatex`: required for resume PDF compilation
 - `python-multipart`: required for guitar PDF uploads
-- `Ollama`: optional but used for internship posting summaries
-- `camoufox[geoip]`: used by the Tesla scraper
 
 ## Useful Docs
 
@@ -120,4 +110,3 @@ Agents should avoid editing database files directly unless the task is explicitl
 - `docs/data-model.md`
 - `docs/agent-workflows.md`
 - `COMPANY_LIST_CONTEXT.md`
-- `TESLA_SCRAPER_CONTEXT.md`

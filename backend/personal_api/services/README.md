@@ -40,26 +40,10 @@
 - potential-connect queue updates
 - sync logic between contacts and outreach queue rows
 
-### `tesla_scraper.py`
-
-- Tesla-specific scrape flow using Camoufox
-- additional anti-bot and diagnostic handling
-
 ### `companies.py`
 
 - tracked company CRUD
 - cowork-text generation and disk write
-
-### `finance.py`
-
-- finance categories
-- manual expenses
-- subscription definitions and derived monthly occurrences
-- wishlist items
-
-### `reflection.py`
-
-- splits `reflection_items` rows into quote/prompt/question/video arrays
 
 ### `resume.py`
 
@@ -76,5 +60,4 @@
 
 - `networking.py`: two partially synchronized table families
 - `modules.py`: shared guitar/workout logic plus file metadata
-- `finance.py`: mixes stored expenses with derived monthly subscription occurrences
 - `resume.py`: depends on system binaries and subprocess execution

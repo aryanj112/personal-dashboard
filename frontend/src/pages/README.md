@@ -38,17 +38,6 @@ Each file in this folder is a route-level screen rendered by `frontend/src/App.t
 - edits interactions and follow-up metadata
 - handles copy/open workflows for outreach messages
 
-### `FinancePage.tsx`
-
-- month-scoped expense view
-- shows subscriptions and wishlist items
-- derives category distribution charts on the client
-
-### `ReflectionPage.tsx`
-
-- loads quotes/prompts/questions/videos from the backend
-- stores gratitude/reflection text locally in localStorage
-
 ### `ResumePage.tsx`
 
 - stores multiple resume drafts in localStorage
@@ -62,7 +51,6 @@ Each file in this folder is a route-level screen rendered by `frontend/src/App.t
 - habits manager
 - company list manager
 - networking enum/options management
-- finance category management
 - section/history management for guitar and workouts
 
 ## Shared Patterns Across Pages

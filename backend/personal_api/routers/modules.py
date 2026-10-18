@@ -12,6 +12,7 @@ from ..schemas import (
     GuitarMaterialCreate,
     GuitarMaterialUpdate,
     GuitarSongCreate,
+    GuitarSongOrderUpdate,
     GuitarSongUpdate,
     SectionCreate,
     SectionUpdate,
@@ -28,6 +29,7 @@ from ..services.modules import (
     get_guitar_song_file,
     guitar_material_rows,
     guitar_song_group_rows,
+    reorder_guitar_songs,
     save_session,
     section_rows,
     session_analytics,
@@ -110,6 +112,13 @@ def api_create_guitar_song(group_id: int, payload: GuitarSongCreate) -> dict[str
         return create_guitar_song(conn, group_id, payload.title)
 
 
+@router.put("/guitar/song-groups/{group_id}/songs/order")
+def api_reorder_guitar_songs(group_id: int, payload: GuitarSongOrderUpdate) -> dict[str, bool]:
+    with get_db() as conn:
+        reorder_guitar_songs(conn, group_id, payload.song_ids)
+    return {"ok": True}
+
+
 @router.patch("/guitar/songs/{song_id}")
 def api_update_guitar_song(song_id: int, payload: GuitarSongUpdate) -> dict[str, Any]:
     with get_db() as conn:
@@ -134,10 +143,10 @@ def api_delete_guitar_song(song_id: int) -> dict[str, bool]:
 
 @router.post("/guitar/songs/{song_id}/files")
 async def api_upload_guitar_song_file(song_id: int, file: UploadFile = File(...)) -> dict[str, Any]:
-    filename = file.filename or "untitled.pdf"
+    filename = file.filename or "untitled"
     suffix = Path(filename).suffix.lower()
-    if suffix != ".pdf":
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+    if suffix not in {".pdf", ".png"}:
+        raise HTTPException(status_code=400, detail="Only PDF and PNG files are supported.")
 
     stored_name = f"{uuid4().hex}{suffix}"
     target_path = GUITAR_FILES_DIR / stored_name
@@ -169,7 +178,12 @@ def api_get_guitar_song_file(file_id: int) -> FileResponse:
     file_path = (GUITAR_FILES_DIR.parent / file_row["relative_path"]).resolve()
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File missing on disk.")
-    return FileResponse(file_path, media_type="application/pdf", filename=file_row["display_name"])
+    return FileResponse(
+        file_path,
+        media_type="image/png" if file_path.suffix.lower() == ".png" else "application/pdf",
+        filename=file_row["display_name"],
+        content_disposition_type="inline",
+    )
 
 
 @router.delete("/guitar/song-files/{file_id}")
@@ -257,12 +271,25 @@ def api_delete_guitar_session(session_id: int) -> dict[str, bool]:
 @router.get("/workouts")
 def api_workouts() -> dict[str, Any]:
     with get_db() as conn:
-        return module_payload(
+        payload = module_payload(
             conn,
             "workout_sessions",
             "workout_session_sections",
             "workout_sections",
         )
+        payload["sick_dates"] = [
+            row["sick_date"]
+            for row in conn.execute(
+                """
+                SELECT hsd.sick_date
+                FROM habit_sick_days hsd
+                JOIN habits h ON h.id = hsd.habit_id
+                WHERE h.name = 'Exercise'
+                ORDER BY hsd.sick_date
+                """
+            ).fetchall()
+        ]
+        return payload
 
 
 @router.post("/workouts/sections")

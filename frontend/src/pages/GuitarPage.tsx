@@ -195,22 +195,9 @@ export function GuitarPage({
     ] as number[],
   }));
   const [showWeekSessions, setShowWeekSessions] = useState(false);
-  const [showAllSections, setShowAllSections] = useState(false);
   const [openMaterials, setOpenMaterials] = useState<Record<number, boolean>>({});
   const dateSessions = data.sessions.filter((session) => session.session_date === form.date);
   const existingDateSession = dateSessions[0] ?? null;
-
-  // What's already logged for this date. Taken from the saved sessions rather
-  // than the form, so a chip doesn't vanish the moment it's deselected.
-  const loggedSectionIds = new Set(
-    dateSessions.flatMap((session) => session.sections.map((section) => section.id)),
-  );
-  // Once a session exists, lead with just those areas; "more" opens the rest.
-  const collapseSections = existingDateSession !== null && !showAllSections;
-  const visibleSections = collapseSections
-    ? data.sections.filter((section) => loggedSectionIds.has(section.id))
-    : data.sections;
-  const hiddenSectionCount = data.sections.length - visibleSections.length;
   const deltaBluesGroup =
     data.song_groups.find((group) => group.name.trim().toLowerCase() === "delta blues") ?? null;
   const weekRangeLabel = getCurrentWeekRangeLabel();
@@ -220,16 +207,33 @@ export function GuitarPage({
       session.session_date >= weekBounds.startIso && session.session_date <= weekBounds.endIso,
   );
 
-  async function submitSession(event: FormEvent) {
-    event.preventDefault();
-    await api.createSession("guitar", {
-      date: form.date,
-      duration_minutes: 0,
-      section_ids: form.section_ids,
-    });
-    // Stay on the date just logged with its areas still selected, so the form
-    // reflects the saved session rather than resetting out from under you.
-    setShowAllSections(false);
+  /**
+   * Each click saves. Updating an existing session goes through updateSession
+   * with the full list, because createSession unions sections into the day and
+   * so could never drop one.
+   */
+  async function toggleSection(sectionId: number) {
+    const next = form.section_ids.includes(sectionId)
+      ? form.section_ids.filter((id) => id !== sectionId)
+      : [...form.section_ids, sectionId];
+
+    setForm((current) => ({ ...current, section_ids: next }));
+
+    if (existingDateSession) {
+      if (next.length === 0) {
+        // Nothing practiced that day, so don't leave an empty session behind
+        // counting toward the weekly total.
+        await api.deleteSession("guitar", existingDateSession.id);
+      } else {
+        await api.updateSession("guitar", existingDateSession.id, { section_ids: next });
+      }
+    } else {
+      await api.createSession("guitar", {
+        date: form.date,
+        duration_minutes: 0,
+        section_ids: next,
+      });
+    }
     await onRefresh();
   }
 
@@ -249,7 +253,7 @@ export function GuitarPage({
             </div>
           </div>
 
-          <form className="module-form" onSubmit={submitSession}>
+          <div className="module-form">
             <label>
               <span>Date</span>
               <input
@@ -260,7 +264,6 @@ export function GuitarPage({
                   const sections = data.sessions
                     .filter((session) => session.session_date === date)
                     .flatMap((session) => session.sections.map((section) => section.id));
-                  setShowAllSections(false);
                   setForm({ date, section_ids: [...new Set(sections)] });
                 }}
               />
@@ -268,44 +271,23 @@ export function GuitarPage({
 
             <div className="field-group">
               <div className="chip-grid">
-                {visibleSections.map((section) => {
+                {data.sections.map((section) => {
                   const active = form.section_ids.includes(section.id);
                   return (
                     <button
                       type="button"
                       key={section.id}
                       className={`chip ${active ? "active" : ""}`}
-                      onClick={() =>
-                        setForm((current) => ({
-                          ...current,
-                          section_ids: active
-                            ? current.section_ids.filter((id) => id !== section.id)
-                            : [...current.section_ids, section.id],
-                        }))
-                      }
+                      aria-pressed={active}
+                      onClick={() => void toggleSection(section.id)}
                     >
                       {section.name}
                     </button>
                   );
                 })}
-
-                {existingDateSession && (hiddenSectionCount > 0 || showAllSections) ? (
-                  <button
-                    type="button"
-                    className="chip chip-more"
-                    onClick={() => setShowAllSections((current) => !current)}
-                  >
-                    {showAllSections ? "Less" : `${hiddenSectionCount} more`}
-                  </button>
-                ) : null}
               </div>
             </div>
-
-            <button type="submit" className="primary-button">
-              <Plus size={16} />
-              {existingDateSession ? "Update session" : "Save session"}
-            </button>
-          </form>
+          </div>
         </motion.section>
 
         <motion.section className="surface-card" {...panelReveal}>

@@ -856,6 +856,19 @@ textarea {
   color: var(--accent-strong);
 }
 
+/* Reveals the practice areas not in the logged session — reads as a control
+   rather than another selectable area. */
+.chip-more {
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+}
+
+.chip-more:hover {
+  border-color: var(--line-strong);
+  color: var(--text-soft);
+}
+
 .rest-day-row {
   margin-top: 0.75rem;
   padding-top: 0.75rem;

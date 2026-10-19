@@ -182,14 +182,35 @@ export function GuitarPage({
   onRefresh: () => Promise<void>;
 }) {
   const todayString = getTodayString();
-  const [form, setForm] = useState({
+  // Start on today with whatever is already logged selected, so the form opens
+  // showing the session as it stands rather than empty.
+  const [form, setForm] = useState(() => ({
     date: todayString,
-    section_ids: [] as number[],
-  });
+    section_ids: [
+      ...new Set(
+        data.sessions
+          .filter((session) => session.session_date === todayString)
+          .flatMap((session) => session.sections.map((section) => section.id)),
+      ),
+    ] as number[],
+  }));
   const [showWeekSessions, setShowWeekSessions] = useState(false);
+  const [showAllSections, setShowAllSections] = useState(false);
   const [openMaterials, setOpenMaterials] = useState<Record<number, boolean>>({});
   const dateSessions = data.sessions.filter((session) => session.session_date === form.date);
   const existingDateSession = dateSessions[0] ?? null;
+
+  // What's already logged for this date. Taken from the saved sessions rather
+  // than the form, so a chip doesn't vanish the moment it's deselected.
+  const loggedSectionIds = new Set(
+    dateSessions.flatMap((session) => session.sections.map((section) => section.id)),
+  );
+  // Once a session exists, lead with just those areas; "more" opens the rest.
+  const collapseSections = existingDateSession !== null && !showAllSections;
+  const visibleSections = collapseSections
+    ? data.sections.filter((section) => loggedSectionIds.has(section.id))
+    : data.sections;
+  const hiddenSectionCount = data.sections.length - visibleSections.length;
   const deltaBluesGroup =
     data.song_groups.find((group) => group.name.trim().toLowerCase() === "delta blues") ?? null;
   const weekRangeLabel = getCurrentWeekRangeLabel();
@@ -206,10 +227,9 @@ export function GuitarPage({
       duration_minutes: 0,
       section_ids: form.section_ids,
     });
-    setForm({
-      date: todayString,
-      section_ids: [],
-    });
+    // Stay on the date just logged with its areas still selected, so the form
+    // reflects the saved session rather than resetting out from under you.
+    setShowAllSections(false);
     await onRefresh();
   }
 
@@ -240,18 +260,15 @@ export function GuitarPage({
                   const sections = data.sessions
                     .filter((session) => session.session_date === date)
                     .flatMap((session) => session.sections.map((section) => section.id));
+                  setShowAllSections(false);
                   setForm({ date, section_ids: [...new Set(sections)] });
                 }}
               />
             </label>
 
-            {existingDateSession ? (
-              <p className="field-caption">Add practice areas to your existing session</p>
-            ) : null}
-
             <div className="field-group">
               <div className="chip-grid">
-                {data.sections.map((section) => {
+                {visibleSections.map((section) => {
                   const active = form.section_ids.includes(section.id);
                   return (
                     <button
@@ -271,12 +288,22 @@ export function GuitarPage({
                     </button>
                   );
                 })}
+
+                {existingDateSession && (hiddenSectionCount > 0 || showAllSections) ? (
+                  <button
+                    type="button"
+                    className="chip chip-more"
+                    onClick={() => setShowAllSections((current) => !current)}
+                  >
+                    {showAllSections ? "Less" : `${hiddenSectionCount} more`}
+                  </button>
+                ) : null}
               </div>
             </div>
 
             <button type="submit" className="primary-button">
               <Plus size={16} />
-              {existingDateSession ? "Add to session" : "Save session"}
+              {existingDateSession ? "Update session" : "Save session"}
             </button>
           </form>
         </motion.section>
